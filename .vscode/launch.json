@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/bk7258/sample_code/bk7258_ap/app.elf",
+            "serverpath": "/opt/SEGGER/JLink_V910/JLinkGDBServer",
+            "serverArgs": [
+                "-select",
+                "USB",
+                "-endian",
+                "little",
+                "-speed",
+                "4000",
+                "-noir",
+                "-noLocalhostOnly"
+            ],
+            "name": "Debug with JLink",
+            "request": "launch",
+            "type": "cortex-debug",
+            "device": "Cortex-M33",
+            "interface": "swd",
+            "showDevDebugOutput": "raw",
+            "servertype": "jlink",
+            "runToEntryPoint": "main"
+        }
+    ]
+}
