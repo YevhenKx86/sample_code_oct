@@ -11,30 +11,53 @@
 #include "driver/pwr_clk.h"
 #include <components/avdk_utils/avdk_error.h>
 //---
-#include "mlcd_test.h"
+// #include "mlcd_test.h"
 #include "dev_power.h"
 //---
-#define TAG "qspi_lcd_disp_test"
+
+#include <stdio.h> // for sprintf, etc...
+#include <stdlib.h> // for abs
+
+// #define TAG "qspi_lcd_disp_test"
+#define TAG "octave_engine_test"
 
 #define LOGI(...) BK_LOGI(TAG, ##__VA_ARGS__)
 #define LOGE(...) BK_LOGE(TAG, ##__VA_ARGS__)
 #define LOGD(...) BK_LOGD(TAG, ##__VA_ARGS__)
 #define LOGV(...) BK_LOGV(TAG, ##__VA_ARGS__)
+
+#include "oct_port.h"
+#include "oct_api.h"
+#include "oct.h"
+
 //-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-static beken_thread_t g_test_task_handle = NULL;
-//-----------------------------------------------------------------------------
-static void test_task_entry(beken_thread_arg_t data){
-    mlcd_test();
+// static beken_thread_t g_test_task_handle = NULL;
+static beken_thread_t g_oct_engine_task_handle = NULL;
+
+void OCT_engine_task(beken_thread_arg_t data){
+    multi_lcd_init();
+    multi_lcd_backlight_open(MULTI_LCD_BACKLIGHT_CTR_PIN);
+
+    OCT_init();
+    OCT_set_state(OCT_STATE_MEETING);
+
+    while (1) {
+        OCT_run();
+    }
 }
+
+// static void test_task_entry(beken_thread_arg_t data){
+//     mlcd_test();
+// }
+
 //-----------------------------------------------------------------------------
 bk_err_t test_init(void){
     int ret = BK_OK;
 
-    ret = rtos_create_thread(&g_test_task_handle,
+    ret = rtos_create_thread(&g_oct_engine_task_handle,
                             BEKEN_DEFAULT_WORKER_PRIORITY,
                             "test",
-                            (beken_thread_function_t)test_task_entry,
+                            (beken_thread_function_t)OCT_engine_task,
                             4*1024,
                             (beken_thread_arg_t)NULL);
     if (ret)
@@ -48,6 +71,8 @@ bk_err_t test_init(void){
     return ret;
 }
 //-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 int main(void)
 {
     bk_init();
@@ -59,6 +84,7 @@ int main(void)
     dev_power_ldo33_en();
 
     //mlcd_test();
+
     test_init();
 
     return 0;

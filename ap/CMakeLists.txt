@@ -2,23 +2,25 @@ set(incs include  .)
 set(srcs ap_main.c)
 
 list(APPEND incs
-    ./test
-    ./blur
-    ./palette
-    ./benchmark
+    # ./test
+    # ./blur
+    # ./palette
+    # ./benchmark
     ./components
     ./components/multi_lcd
-    ./utills
+    ./oct_port
+    # ./utills
     ../bk7258_sdk/ap/components/multimedia/include
+    ../core
 )
 
 list(APPEND srcs
-    ./blur/blur.c
-    ./palette/palette.c
-    ./test/mlcd_test.c
+    # ./blur/blur.c
+    # ./palette/palette.c
+    # ./test/mlcd_test.c
     ./components/dev_power.c
     ./components/multi_lcd/multi_lcd.c
-    ./utills/time_labels.c
+    # ./utills/time_labels.c
 )
 
 set(priv_req  media_service multimedia bk_display)
