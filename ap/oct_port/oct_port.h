@@ -80,9 +80,7 @@ uint32_t RTOS_getTimeMs(void) {
 
 static bool loaded = false;
 
-//ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN static uint8_t app_data[APP_BENCH_SIZE];
-
-ATTR_RWDATA_IN_RAM static uint8_t app_data[APP_BENCH_SIZE];
+ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN static uint8_t app_data[APP_BENCH_SIZE];
 
 uint8_t * load_app(void){
 
@@ -94,10 +92,6 @@ uint8_t * load_app(void){
     memcpy(app_data, app_bench_data, APP_BENCH_SIZE);
 
     BK_LOGI(NULL,"%s: loaded app data %p\r\n", __func__, app_data);
-    /*BK_LOGI(NULL,"%s: OctPalsData %p\r\n", __func__, OctPalsData);
-    BK_LOGI(NULL,"%s: OctBack %p\r\n", __func__, OctBack);
-    BK_LOGI(NULL,"%s: OctMix %p\r\n", __func__, OctMix);
-    BK_LOGI(NULL,"%s: OctCache %p\r\n", __func__, OctCache);*/
 
     return app_data;
 }
