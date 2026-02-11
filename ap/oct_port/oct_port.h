@@ -7,8 +7,8 @@
 #include <os/os.h>
 
 #include "multi_lcd.h"
-//#include "oct_embed.h"
-#include "app_bench.h"
+#include "oct_embed.h"
+//#include "app_bench.h"
 
 static frame_buffer_t* displays[DISPLAY_COUNT];
 
