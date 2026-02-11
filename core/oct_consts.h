@@ -1,10 +1,23 @@
 #pragma once
 #include <stdint.h>
 
+#ifdef OCTSIM
+#include "oct_crossplatform.h"
+#else
+#ifdef OCT_APP_MODULE
+#include "oct_crossplatform.h"
+#endif
+#endif
+
+const int       OCT_IMU_COOLDOWN_MS = 200;
+const int       OCT_PAUSE_TIMEOUT   = 3000;
+#define OCT_IMU_DT_MS       100 //20
+
+
 #define OCT_SPRITES_CAP     512                                                 //Maximum allowed objects array capacity
 #define OCT_LABELS_CAP      64                                                  //Maximum number of labels
 #define OCT_LABEL_LEN       128                                                 //Maximum label text length
-#define DEBUG_STRINGS       4                                                   //
+#define DEBUG_STRINGS       8                                                   //
 #define DEBUG_STRING_CAP    128                                                 //
 
 #define OCT_ASSET_NAME_MAXLEN 24
@@ -15,6 +28,88 @@
 #define CUBEID_SERVER       0
 #define CUBEID_UNDEFINED    255
 
+
+//[NOTE]: When changing or extending types here, must also update table of sizes in OCT_NET_restart
+typedef enum
+{
+    //Unreliable delivery
+    PKT_SIGNAL_MEET = 1,
+    PKT_SIGNAL_INFO,
+    PKT_SIGNAL_ASK,
+    PKT_SIGNAL_BT_INFO,
+    PKT_SIGNAL_PING,
+    PKT_SIGNAL_PONG,
+    PKT_SIGNAL_BENCHMARK,
+
+    //Reliable delivery, with execution synced to a leader's tick
+    PKT_CMD_FIRST = 16, //Packets between cmd_first and cmd_last will be stored, transmitted and processed as a command (so no need to manually plug each new cmd into loop)
+    PKT_CMD_LAYOUT = 16,
+    PKT_CMD_TWIST,
+    PKT_CMD_TAP,
+    PKT_CMD_REBOOT,
+    PKT_CMD_IMU,
+    PKT_CMD_EVENT,
+    PKT_CMD_DEV,
+    PKT_CMD_APP,
+    PKT_CMD_LAST,
+
+    PKT_CMD_TIME,           ///
+    PKT_CMD_CTRL_BACKLIGHT,
+    PKT_CMD_CTRL_CURRENT,
+    PKT_CMD_FILE,           ///
+    PKT_CMD_INSTALL,        ///
+    PKT_CMD_DATA,           ///
+
+    //Reliable delivery,
+    PKT_MSG_FIRST = 64,
+    PKT_MSG_IMU = 64,
+    PKT_MSG_REQUEST,
+    PKT_MSG_REPORT,
+    PKT_MSG_REBOOT,
+    PKT_MSG_BACKLIGHT,
+    PKT_MSG_TRACE,
+    PKT_MSG_PING,
+    PKT_MSG_PONG,
+    PKT_MSG_BLOB_OFFER,
+    PKT_MSG_BLOB_ANNOUNCE,
+    PKT_MSG_BLOB_FETCH,     //Server emits this when everyone is ready to accept offered blob; receiver should start to process blobs stream (whether it's sending or processing)        
+    
+    PKT_MSG_TWIST,
+    PKT_MSG_JOB_DOWNLOAD_REPORT,
+    //PKT_MSG_BLOB_CLAIM,
+    //PKT_MSG_BLOB_ALLOW,
+    //PKT_MSG_BLOB_ACCESS,
+    //PKT_MSG_BLOB_GRANT,
+    PKT_MSG_LAST,
+
+    //Reliable delivery
+    PKT_BLOB_FORCED = 126,
+    PKT_BLOB = 127
+
+} octPacketType_t;
+
+
+
+
+typedef enum
+{
+    JOB_STATE_OFF = 0, JOB_STATE_INITIATE = 1, JOB_STATE_SYNCING_BEFORE = 2, JOB_STATE_WAITING = 3, JOB_STATE_SENDING = 4, JOB_STATE_SYNCING_AFTER = 5, JOB_STATE_DONE = 6, JOB_STATE_CANCELLED = 10
+} octJobState_t;
+
+typedef enum
+{
+    BLOB_TYPE_UNSET = 0, BLOB_TYPE_FIRMWARE = 1, BLOB_TYPE_FIRMWARE_DEV = 2, BLOB_TYPE_BOOTLOAD = 3, BLOB_TYPE_BOOTLOAD_DEV = 4, 
+} octBlobType_t;
+
+#define STREAMS_MSGS            13 //8 cubes, 1 dock, 1+1 sim \ wowcube, 1+1 mobile
+#define STREAMS_TOTAL           15
+#define STREAMS_LAST            14
+
+typedef enum {  STREAM_MSGS_C0 = 0,     STREAM_MSGS_C1 = 1,         STREAM_MSGS_C2 = 2,             STREAM_MSGS_C3 = 3,             STREAM_MSGS_C4 = 4,             STREAM_MSGS_C5 = 5,         STREAM_MSGS_C6 = 6,         STREAM_MSGS_C7 = 7,
+                STREAM_MSGS_DOCK = 8,   STREAM_MSGS_CLIENT_BT = 9,  STREAM_MSGS_SERVER_BT = 10,     STREAM_MSGS_CLIENT_BLE = 11,    STREAM_MSGS_SERVER_BLE = 12,
+                STREAM_CMDS = 13,       STREAM_BLOBS = 14,          STREAM_NONE = 31 } octStreamId_t;
+
+typedef enum {  PEER_C0 = 0, PEER_C1 = 1, PEER_C2 = 2, PEER_C3 = 3, PEER_C4 = 4, PEER_C5 = 5, PEER_C6 = 6, PEER_C7 = 7, PEER_DOCK = 8, PEER_SIM = 9, PEER_MOBILE = 10, PEER_REMOTE = 11, PEER_UNDEFINED = 31 } octPeerId_t;
 
 //Engine's lifecycle; three first states must have the least and increasing values (because some tests use ">" to check state)
 const int OCT_STATE_DISABLED = 0,  OCT_STATE_MEETING = 1,  OCT_STATE_INCOMPLETE = 2, OCT_STATE_CONSOLE = 3,  OCT_STATE_APP = 4,  OCT_STATE_RUNNING = 5,   OCT_STATE_SAFEMODE = 10;
@@ -103,9 +198,9 @@ uint32_t PKT_SIZES[256] = {0};
 
 #define TTL_MASK 0b11
 #define SYNC_MASK 0b11111100
-#define OCT_TTL_FOR_BROADCAST 3
-#define OCT_TTL_FOR_NEIGHBOR 1
-#define OCT_TTL_DIRECTLY 0
+#define OCT_TTL_MAX             3       //External device <-> Lead module
+#define OCT_TTL_FOR_BROADCAST   2       //Any internal module
+#define OCT_TTL_FOR_NEIGHBOR    0       //No forwarding
 #define OCT_LINES_NUM 3     //[TODO]: Rename
 
 //Simplified uart_port_to_dma_channel() to just a table
@@ -284,7 +379,6 @@ const uint32_t OCT_CRC_TABLE[256] = {
 
 //[NOTE]: MTK geniuses are storing POINTERS to names
 const char* OCT_SLEEP_HANDLE_NAME_UART = "UARTX";
-
 
 
 //Used as table of constants

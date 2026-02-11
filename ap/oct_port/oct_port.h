@@ -5,6 +5,7 @@
 #include "oct_crossplatform.h"
 
 #include <os/os.h>
+//#include "core_star.h"
 
 #include "multi_lcd.h"
 #include "oct_embed.h"
@@ -54,7 +55,6 @@ static avdk_err_t display_frame_free_cb(void *_fb){
 void DISPLAY_WaitDMA() {    
 
     while (displayFlag[0] && displayFlag[1] && displayFlag[2]) {
-        //LOGI("%s\r\n", __func__);
         rtos_delay_milliseconds(1);
     }
 }
@@ -77,8 +77,28 @@ uint32_t RTOS_getTimeMs(void) {
     return rtos_get_time();
 }
 
+void RTOS_sleep(uint32_t ms){
+    rtos_delay_milliseconds(ms);
+}
 
-static bool loaded = false;
+void RTOS_systemReset(void){
+    //TO DO
+}
+
+void BACKLIGHT_setOff(void){
+    // TO DO
+}
+
+void BACKLIGHT_setOn(void){
+    // TO DO
+}
+
+int BACKLIGHT_setBacklightLevel(uint32_t percent){
+    // TO DO
+    return percent;
+}
+
+/*static bool loaded = false;
 
 ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN static uint8_t app_data[APP_BENCH_SIZE];
 
@@ -94,4 +114,4 @@ uint8_t * load_app(void){
     BK_LOGI(NULL,"%s: loaded app data %p\r\n", __func__, app_data);
 
     return app_data;
-}
+}*/

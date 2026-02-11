@@ -7,14 +7,40 @@
 #include "oct_render.h"
 #include "oct_pack.h"
 #include "oct_debug.h"
-//#include "oct_embed.h"
+#include "oct_embed.h"
 #include "oct_app.h"
+#include "oct_net.h"
+#include "oct_net_cmds.h"
+#include "oct_net_msgs.h"
+#include "oct_net_signals.h"
+#include "oct_net_blobs.h"
+//----------------------------------------------------------------------------
+static bool loaded = false;
 
+ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN static uint8_t app_data[APP_BENCH_SIZE];
 
+uint8_t * load_app(void){
+
+    if(loaded){
+        return app_data;
+    }
+    loaded = true;
+
+    memcpy(app_data, app_bench_data, APP_BENCH_SIZE);
+
+    //BK_LOGI(NULL,"%s: loaded app data %p\r\n", __func__, app_data);
+
+    return app_data;
+}
+//----------------------------------------------------------------------------
 void OCT_set_embed_pack(const uint8_t* embed)
     {
         //Bind pack
-        OctPack = embed;
+        /*OctPack = embed;
+        OctPackHeader = (octPackHeader_t*)OctPack; 
+        OctPackAssets = (octAssetDesc_t*)(OctPack + sizeof(octPackHeader_t));*/ 
+
+        OctPack = load_app();
         OctPackHeader = (octPackHeader_t*)OctPack; 
         OctPackAssets = (octAssetDesc_t*)(OctPack + sizeof(octPackHeader_t)); 
     }
@@ -62,8 +88,6 @@ TL appObject_t  Objects[OBJECTS_CAP];
 
 void on_init_bench() 
     {
-        LOGI("%s", __func__);
-
         OCT_restart((int*)Objects, OBJECTS_CAP, sizeof(appObject_t));
         OCT_viewports_layout(SCHEME_CUBE, GAP, GAP);
 
@@ -84,7 +108,7 @@ void on_init_bench()
         {
             int idx = OCT_add(40, false, q/4, 120.0f * XSIGN[q%4] - 120, 120.0f * YSIGN[q%4] + 120, 0, true, BMP_cau, BMP_cau_end, 2);
             Objects[idx].Base.Type = 0;//TYPE_cau
-        }
+        }    
 
         OCT_text(-1, "App inited");
     }
@@ -159,6 +183,8 @@ void OCT_init()
         OCT_set_state(OCT_STATE_DISABLED);
 
         OCT_viewports_unbind(), OCT_viewports_layout(SCHEME_CUBE, 18, 18);
+
+        OCT_NET_restart();
     }
 
 
@@ -237,16 +263,11 @@ static void OCT_render(uint8_t display, int vid, uint16_t* framebuf)
             //Clear screen texture
             uint32_t* framebuf4 = (uint32_t*)framebuf;
             for (int i=0; i < 240; i++) for (int j=0; j < 120; j++) framebuf4[i*120+j] = 0x08080808;
-
-            //LOGI("clean 1: %u\r\n", display);
             return;
         }
 
         //No scene to render
-        if (OctMem == NULL) {
-            LOGI("mem is null!\r\n");
-            return;
-        }
+        if (OctMem == NULL) return;
 
         //Slows render down, so an actual game shouldn't be using this (only to test something)
         if (OctClearEnabled)
@@ -254,8 +275,6 @@ static void OCT_render(uint8_t display, int vid, uint16_t* framebuf)
             //[TODO]: use 32-bit
             for (int i=0; i < HALFSIDE; i++) for (int j=0; j < HALFSIDE; j++)
                 OctBack[i*HALFSIDE+j] = OctClearColor;
-            
-            //LOGI("clear screen: %x\r\n", OctClearColor);
         }
         else
         if (OctDevMode & OCT_DEV_CLEAR_SCREEN) {
@@ -263,7 +282,6 @@ static void OCT_render(uint8_t display, int vid, uint16_t* framebuf)
         }
 
         //Playing
-        //LOGI("playing\r\n");
         OCT_RENDER_scene(vid, framebuf);
     }
 
@@ -271,8 +289,6 @@ static void OCT_render(uint8_t display, int vid, uint16_t* framebuf)
 //Main engine function
 void OCT_run()
     {
-        //LOGI("state: %u\r\n", OctState);
-
         //Safeguard allowing run system code without OS
         if (OCT_is_state( OCT_STATE_DISABLED)) return;
 
@@ -292,11 +308,6 @@ void OCT_run()
                 //Single module
                 if (OctCubeId == CUBEID_UNDEFINED) OctCubeId = 0;
         
-                //Force embedded app to run
-                OCT_set_embed_pack( load_app() );
-                EXTERNAL_on_init = on_init_bench;
-                OCT_set_state(OCT_STATE_APP);
-                OCT_on_init();
             }
         }
 
@@ -310,7 +321,15 @@ void OCT_run()
             //How many ticks we are falling behind
             int ticks = extrapolated_time/OCT_FRAME_MS - OctSyncedTick;
 
-            //[TODO]: Jump if too much ticks
+            //[NOTE]: This is benchmark hack, when we see another module THEN run the game
+            if ((OCT_is_state(OCT_STATE_INCOMPLETE) && (OctHwidsNum == 2))  ||  OCT_is_state(OCT_STATE_CONSOLE)) 
+            {
+                OCT_set_embed_pack(app_bench_data);
+                EXTERNAL_on_init = on_init_bench;
+                OCT_set_state(OCT_STATE_APP);
+                OCT_on_init();
+            }
+
 
             //Fixed time steps
             while (ticks > 0)
@@ -323,13 +342,11 @@ void OCT_run()
             }
         }
 
+
         {
-            
             //Output scene to cube displays
             for(uint8_t d = 0; d < DISPLAY_COUNT; d++)
             {
-                //LOGI("run: %u\r\n", d);
-
                 //Find camera bound to this display
                 uint16_t* framebuf = OCT_DISPLAY_framebuffer(d);
                 uint32_t cur_sid = 3 * OCT_cubeid() + d;
