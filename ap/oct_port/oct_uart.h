@@ -9,13 +9,25 @@
 //#include "task_utils.h"
 #include "oct_vars.h"
 #include "oct_helpers.h"
+#include "driver/uart.h"
+#include "uart_driver.h"
 
 //Defined inside HAL
 //extern TL VDMA_REGISTER_T*         vdma[];
 //extern TL VDMA_REGISTER_PORT_T*    vdma_port[];
 
-//Forward decl
-//void OCT_NET_route_packet(uint32_t line_id, octPacket_t* pkt);
+int hal_uart_deinit(hal_uart_port_t port){
+    return bk_uart_deinit(port);
+}
+
+void rx_done_callback(uart_id_t id, void *param){
+
+    int bytesCount = bk_uart_read_bytes(id, (void*)(&OctDmaRxBuffers[id][OctUarts[id].RxAvailable]), CONFIG_KFIFO_SIZE, 1);
+
+    if(bytesCount > 0){
+        OctUarts[id].RxAvailable += bytesCount;
+    }
+}
 
 
 void OCT_UART_dma_callback(hal_uart_callback_event_t event, void *user_data)
@@ -81,8 +93,42 @@ void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data)
     }
 
 
+static bool uart_driver_inited = false;
+
 void OCT_UART_reinit_port(hal_uart_port_t port)
     {
+        uint32_t line_id = ((uint32_t)port);
+
+        //cfg UART
+
+        BK_LOGI(NULL, "%s: start initializing UART%d\r\n", __func__, line_id);
+
+        if(!uart_driver_inited){
+            bk_uart_driver_init();
+            uart_driver_inited = true;
+        }
+
+        uart_config_t config = {0};
+        os_memset(&config, 0, sizeof(uart_config_t));
+        config.baud_rate = 3000000; //  3000000 not in SDK's supported baud rates list, only 2000000 and 3250000
+        config.data_bits = UART_DATA_8_BITS;
+        config.parity = UART_PARITY_NONE;
+        config.stop_bits = UART_STOP_BITS_1;
+        config.flow_ctrl = UART_FLOWCTRL_DISABLE;
+        config.src_clk = UART_SCLK_XTAL_26M;
+        if (bk_uart_init(line_id, &config) != BK_OK) {
+            DMP("UART initialization failed: %d", status);
+        }
+
+        bk_uart_set_rx_full_threshold(line_id, 128);
+        bk_uart_register_rx_isr(line_id, rx_done_callback, (void*)(uintptr_t)line_id);
+
+        //cfg DMA
+
+        // DMA initialized by CONFIG_UART_RX_DMA and CONFIG_UART_TX_DMA macros
+
+        //---------------------------------------------------------------------------
+
         //Accepted ports are only 1, 2, 3. Adjust mapping to line id if this ever changes.
         //uint32_t line_id = ((uint32_t)port) - 1;
 
@@ -113,6 +159,13 @@ void OCT_UART_reinit_port(hal_uart_port_t port)
 //[NOTE]: Called from main but also on each wake up
 bool OCT_UART_reinit()
     {
+        OCT_UART_reinit_port(HAL_UART_1);
+        OCT_UART_reinit_port(HAL_UART_2);
+        OCT_UART_reinit_port(HAL_UART_3);
+
+        OctUartInitialized = true;
+
+
         //Once per OS lifetime create internal objects and setup buffers
         /*if (OctSleepHandleUart == 0)
         {
@@ -155,17 +208,31 @@ bool OCT_UART_reinit()
 //When trying to send packet several times but DMA buffer is still full, old code tries to reset port
 void OCT_UART_reset_port(uint32_t line_id)
     {
+
+        hal_uart_port_t port = (hal_uart_port_t)(line_id);
+        hal_uart_deinit(port);
+        OCT_UART_reinit_port(port);
+        //...Reset some 'tx overflow' counter
+        OCT_terminate("OCT_UART_reset_port NIY");
+
         /*hal_uart_port_t port = (hal_uart_port_t)(line_id+1);
         hal_uart_deinit(port);
         OCT_UART_reinit_port(port);
-        //...Reset some 'tx overflow' counter*/
-        OCT_terminate("OCT_UART_reset_port NIY");
+        //...Reset some 'tx overflow' counter
+        OCT_terminate("OCT_UART_reset_port NIY");*/
     }
 
 
 //Called before sleep
 void OCT_UART_deinit(void)
     {
+
+        OctUartInitialized = false;
+
+        hal_uart_deinit(HAL_UART_1);
+        hal_uart_deinit(HAL_UART_2);
+        hal_uart_deinit(HAL_UART_3);
+
         //No new packets can be send
         /*OctUartInitialized = false;
 

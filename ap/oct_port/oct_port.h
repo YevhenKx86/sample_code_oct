@@ -82,15 +82,15 @@ void RTOS_sleep(uint32_t ms){
 }
 
 void RTOS_systemReset(void){
-    //TO DO
+    bk_reboot();
 }
 
 void BACKLIGHT_setOff(void){
-    // TO DO
+    multi_lcd_backlight_close(MULTI_LCD_BACKLIGHT_CTR_PIN);
 }
 
 void BACKLIGHT_setOn(void){
-    // TO DO
+    multi_lcd_backlight_open(MULTI_LCD_BACKLIGHT_CTR_PIN);
 }
 
 int BACKLIGHT_setBacklightLevel(uint32_t percent){

@@ -19,14 +19,14 @@ static bool loaded = false;
 
 ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN static uint8_t app_data[APP_BENCH_SIZE];
 
-uint8_t * load_app(void){
+uint8_t * load_app(const uint8_t * app){
 
     if(loaded){
         return app_data;
     }
     loaded = true;
 
-    memcpy(app_data, app_bench_data, APP_BENCH_SIZE);
+    memcpy(app_data, app, APP_BENCH_SIZE);
 
     //BK_LOGI(NULL,"%s: loaded app data %p\r\n", __func__, app_data);
 
@@ -40,7 +40,7 @@ void OCT_set_embed_pack(const uint8_t* embed)
         OctPackHeader = (octPackHeader_t*)OctPack; 
         OctPackAssets = (octAssetDesc_t*)(OctPack + sizeof(octPackHeader_t));*/ 
 
-        OctPack = load_app();
+        OctPack = load_app(embed);
         OctPackHeader = (octPackHeader_t*)OctPack; 
         OctPackAssets = (octAssetDesc_t*)(OctPack + sizeof(octPackHeader_t)); 
     }
