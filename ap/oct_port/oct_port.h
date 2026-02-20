@@ -27,8 +27,6 @@ static void checkDisplay(size_t displayID) {
     displays[displayID]->fmt = PIXEL_FMT_RGB565;
     displays[displayID]->width = DISPLAY_WIDTH; 
     displays[displayID]->height = DISPLAY_HEIGHT;
-
-    LOGI("%s: %u allocated %p\r\n", __func__, displayID, displays[displayID]);
 }
 
 uint16_t* DISPLAY_getFramebufferPtr(size_t displayID) {

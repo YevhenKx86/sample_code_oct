@@ -15,20 +15,12 @@
 #include "oct_net_signals.h"
 #include "oct_net_blobs.h"
 //----------------------------------------------------------------------------
-static bool loaded = false;
 
 ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN static uint8_t app_data[APP_BENCH_SIZE];
 
 uint8_t * load_app(const uint8_t * app){
 
-    if(loaded){
-        return app_data;
-    }
-    loaded = true;
-
     memcpy(app_data, app, APP_BENCH_SIZE);
-
-    //BK_LOGI(NULL,"%s: loaded app data %p\r\n", __func__, app_data);
 
     return app_data;
 }
@@ -88,6 +80,8 @@ TL appObject_t  Objects[OBJECTS_CAP];
 
 void on_init_bench() 
     {
+        OCT_text(-1, "on_init_bench");
+
         OCT_restart((int*)Objects, OBJECTS_CAP, sizeof(appObject_t));
         OCT_viewports_layout(SCHEME_CUBE, GAP, GAP);
 
@@ -185,6 +179,7 @@ void OCT_init()
         OCT_viewports_unbind(), OCT_viewports_layout(SCHEME_CUBE, 18, 18);
 
         OCT_NET_restart();
+        
     }
 
 

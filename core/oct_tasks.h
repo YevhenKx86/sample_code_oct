@@ -12,12 +12,13 @@
 #include "oct_uart.h"
 
 
+
 //Task to parse bytes copied out from DMA RX-buffer, verify packets and route them depending on type
 void OCT_UART_task(void* arg)
     {
         //Task will run each 2 ms (but less often in simulator)
-        const TickType_t TASK_PARSE_TRAFFIC_SLEEP_TIME_MS = pdMS_TO_TICKS(2);
-        TickType_t last_wake = xTaskGetTickCount();
+        //const TickType_t TASK_PARSE_TRAFFIC_SLEEP_TIME_MS = 2000; //pdMS_TO_TICKS(2);
+        //TickType_t last_wake = xTaskGetTickCount();
 
         do
         {
@@ -33,7 +34,8 @@ void OCT_UART_task(void* arg)
             }
                     
 
-            vTaskDelayUntil(&last_wake, TASK_PARSE_TRAFFIC_SLEEP_TIME_MS);            
+            //vTaskDelayUntil(&last_wake, TASK_PARSE_TRAFFIC_SLEEP_TIME_MS);         
+            rtos_delay_milliseconds(2);   
         }
         while (arg == NULL);
     }

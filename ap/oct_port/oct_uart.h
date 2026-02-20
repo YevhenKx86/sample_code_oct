@@ -16,17 +16,21 @@
 //extern TL VDMA_REGISTER_T*         vdma[];
 //extern TL VDMA_REGISTER_PORT_T*    vdma_port[];
 
+static int linesRx_Actions[NET_LINES_MAX] = {0, 0, 0};
+
 int hal_uart_deinit(hal_uart_port_t port){
-    return bk_uart_deinit(port);
+    return bk_uart_deinit((uint32_t)port-1);
 }
 
 void rx_done_callback(uart_id_t id, void *param){
 
-    int bytesCount = bk_uart_read_bytes(id, (void*)(&OctDmaRxBuffers[id][OctUarts[id].RxAvailable]), CONFIG_KFIFO_SIZE, 1);
+    /*int bytesCount = bk_uart_read_bytes(id, (void*)(&OctDmaRxBuffers[id][OctUarts[id].RxAvailable]), CONFIG_KFIFO_SIZE, 1);
 
     if(bytesCount > 0){
         OctUarts[id].RxAvailable += bytesCount;
-    }
+    }*/
+
+    linesRx_Actions[id]++;
 }
 
 
@@ -42,6 +46,26 @@ void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data)
         //User data is hal_uart_port_t, we are not using UART0, so actual index in arrays would be one less than passed port id
         const uint32_t line_id = ((uint32_t)(uintptr_t)user_data) - 1;
         if (line_id >= NET_LINES_MAX) return;
+
+        if(event == HAL_UART_EVENT_READY_TO_READ){
+            //if(linesRx_Actions[line_id] > 0){
+                //linesRx_Actions[line_id] = 0;
+
+                uint32_t space = OctUarts[line_id].RxCacheCap - (OctUarts[line_id].RxAvailable - OctUarts[line_id].RxProcessed);
+
+                if(space > 0){  // ring buffer wrapping
+                    int bytesCount = bk_uart_read_port_bytes(line_id, (void*)(&OctUarts[line_id].RxCache[OctUarts[line_id].RxAvailable]), space);
+                    if(bytesCount > 0){
+                        //Safely update the counter
+                        OCT_MEM_BARRIER;  
+                        OctUarts[line_id].RxAvailable += bytesCount;
+                        OCT_stat(OCT_time(), bytesCount, &StatUartDmaRxData[line_id]);
+                    }
+                }
+            //}
+        }
+
+        
 
         /*const uint32_t rx_channel_offset = OCT_LINE_TO_RX_CHANNEL_OFFSET[line_id];
 
@@ -93,20 +117,17 @@ void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data)
     }
 
 
-static bool uart_driver_inited = false;
 
 void OCT_UART_reinit_port(hal_uart_port_t port)
     {
-        uint32_t line_id = ((uint32_t)port);
+        uint32_t line_id = ((uint32_t)port) - 1;
 
         //cfg UART
 
-        BK_LOGI(NULL, "%s: start initializing UART%d\r\n", __func__, line_id);
+        //BK_LOGI(NULL, "%s: start initializing UART%d\r\n", __func__, line_id);
 
-        if(!uart_driver_inited){
-            bk_uart_driver_init();
-            uart_driver_inited = true;
-        }
+        bk_uart_driver_init();
+        bk_uart_deinit(line_id);  // Deinit first to reset any previous state
 
         uart_config_t config = {0};
         os_memset(&config, 0, sizeof(uart_config_t));
@@ -120,8 +141,8 @@ void OCT_UART_reinit_port(hal_uart_port_t port)
             DMP("UART initialization failed: %d", status);
         }
 
-        bk_uart_set_rx_full_threshold(line_id, 128);
-        bk_uart_register_rx_isr(line_id, rx_done_callback, (void*)(uintptr_t)line_id);
+        //bk_uart_register_rx_isr(line_id, rx_done_callback, (void*)(uintptr_t)line_id);
+        //bk_uart_enable_rx_interrupt(line_id);
 
         //cfg DMA
 
@@ -209,7 +230,7 @@ bool OCT_UART_reinit()
 void OCT_UART_reset_port(uint32_t line_id)
     {
 
-        hal_uart_port_t port = (hal_uart_port_t)(line_id);
+        hal_uart_port_t port = (hal_uart_port_t)(line_id + 1);
         hal_uart_deinit(port);
         OCT_UART_reinit_port(port);
         //...Reset some 'tx overflow' counter
@@ -272,6 +293,8 @@ void OCT_UART_send(uint32_t line_id, const octPacket_t* pkt)
         //Size of packet
         uint32_t data_size = PKT_SIZES[pkt->Header.Type];
         OctUarts[line_id].TxStatBandwidth.Counter += data_size;
+
+        bk_uart_write_bytes(line_id, pkt, data_size); 
 
         //Lock mutex, this function can be called from different tasks
         /*const uint32_t tx_channel_offset = OCT_LINE_TO_TX_CHANNEL_OFFSET[line_id];

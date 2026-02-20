@@ -29,29 +29,31 @@
 #include "oct_port.h"
 #include "oct_api.h"
 #include "oct.h"
+#include "oct_tasks.h"
 
 //-----------------------------------------------------------------------------
 // static beken_thread_t g_test_task_handle = NULL;
 static beken_thread_t g_oct_engine_task_handle = NULL;
+static beken_thread_t g_oct_uart_task_handle = NULL;
 
 void OCT_engine_task(beken_thread_arg_t data){
+
     multi_lcd_init();
+    
     multi_lcd_backlight_open(MULTI_LCD_BACKLIGHT_CTR_PIN);
 
+    OCT_UART_reinit();
+
     OCT_init();
+
     OCT_set_state(OCT_STATE_MEETING);
 
     while (1) {
         OCT_run();
     }
 }
-
-// static void test_task_entry(beken_thread_arg_t data){
-//     mlcd_test();
-// }
-
 //-----------------------------------------------------------------------------
-bk_err_t test_init(void){
+bk_err_t engine_init(void){
     int ret = BK_OK;
 
     ret = rtos_create_thread(&g_oct_engine_task_handle,
@@ -71,7 +73,31 @@ bk_err_t test_init(void){
     return ret;
 }
 //-----------------------------------------------------------------------------
+void OCT_uart_pol_task(beken_thread_arg_t data){
+    while(1){
+        OCT_UART_task(data);
+    }
+}
 
+bk_err_t uart_task_init(void){
+    int ret = BK_OK;    
+
+    ret = rtos_create_thread(&g_oct_uart_task_handle,
+                            BEKEN_DEFAULT_WORKER_PRIORITY,
+                            "oct_uart_pol_task",
+                            (beken_thread_function_t)OCT_uart_pol_task,
+                            4*1024,
+                            (beken_thread_arg_t)NULL);
+    if (ret)
+    {
+        LOGE("%s, %d, rtos_create_thread fail[%d]!\n", __func__, __LINE__, ret);
+        return ret;
+    }
+
+    LOGI("%s, %d, ok!\n", __func__, __LINE__);
+
+    return ret;
+}
 //-----------------------------------------------------------------------------
 int main(void)
 {
@@ -83,9 +109,9 @@ int main(void)
 
     dev_power_ldo33_en();
 
-    //mlcd_test();
+    uart_task_init();
 
-    test_init();
+    engine_init();    
 
     return 0;
 }

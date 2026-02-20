@@ -20,7 +20,7 @@ TL  int                         OctDownloadState = 0;
 TL  octStat_t                   StatFrametime;
 TL  octStat_t                   StatUartDmaRxData[3];
 
-TL TaskHandle_t                                                 OctTaskParseTraffic = 0;
+TL TaskHandle_t                 OctTaskParseTraffic = 0;
 
 TL  int*                        OctMem = 0;                                     //Pool of extended scene objects, shared with app
 TL  int                         OctCap = 0;                                     //How many objects current app decided to use

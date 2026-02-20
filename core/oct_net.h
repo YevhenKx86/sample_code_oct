@@ -8,7 +8,9 @@
 //Forward declarations
 void get_id(uint8_t id_buff[8]);                      // Defined in libhal_protected_CM4_GCC
 void OCT_BT_process_bt_info(octSignalBtInfo_t* pkt);
-bool BT_sendSPPData(uint8_t *data, size_t size);
+static bool BT_sendSPPData(uint8_t *data, size_t size){
+    return true;
+}
 bool BT_isConnected();
 
 void OCT_NET_process_info(uint32_t line_id, octSignalInfo_t* info);

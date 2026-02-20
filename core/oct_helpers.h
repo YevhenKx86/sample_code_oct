@@ -121,20 +121,20 @@ void OCT_strcpy(char* dest, int dest_cap, const char* src)
 ///void OCT_text(const char* text)                 { OCT_strcpy(OctText, 127, text); }
 
 
-inline uint32_t OCT_crc(const uint8_t* buf, int len) {
+static inline uint32_t OCT_crc(const uint8_t* buf, int len) {
     uint32_t crc = 0xFFFFFFFF;
     while (len--) crc = (crc >> 8) ^ OCT_CRC_TABLE[(crc ^ *buf++) & 0xFF];
     return crc ^ 0xFFFFFFFF;
 }
 
-inline uint32_t OCT_crc_continue(uint32_t init_crc, const uint8_t* buf, int len) {
+static inline uint32_t OCT_crc_continue(uint32_t init_crc, const uint8_t* buf, int len) {
     uint32_t crc = init_crc ^ 0xFFFFFFFF;
     while (len--)
         crc = (crc >> 8) ^ OCT_CRC_TABLE[(crc ^ *buf++) & 0xFF];
     return crc ^ 0xFFFFFFFF;
 }
 
-inline uint32_t OCT_crc_byte(uint32_t init_crc, const uint8_t databyte)
+static inline uint32_t OCT_crc_byte(uint32_t init_crc, const uint8_t databyte)
 {
     uint32_t crc = init_crc ^ 0xFFFFFFFF;
     crc = (crc >> 8) ^ OCT_CRC_TABLE[(crc ^ databyte) & 0xFF];
