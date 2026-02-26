@@ -80,7 +80,7 @@ TL appObject_t  Objects[OBJECTS_CAP];
 
 void on_init_bench() 
     {
-        OCT_text(-1, "on_init_bench");
+        //OCT_text(-1, "on_init_bench");
 
         OCT_restart((int*)Objects, OBJECTS_CAP, sizeof(appObject_t));
         OCT_viewports_layout(SCHEME_CUBE, GAP, GAP);
@@ -318,6 +318,7 @@ void OCT_run()
 
             //[NOTE]: This is benchmark hack, when we see another module THEN run the game
             if ((OCT_is_state(OCT_STATE_INCOMPLETE) && (OctHwidsNum == 2))  ||  OCT_is_state(OCT_STATE_CONSOLE)) 
+            //if (OCT_is_state(OCT_STATE_INCOMPLETE) ||  OCT_is_state(OCT_STATE_CONSOLE))
             {
                 OCT_set_embed_pack(app_bench_data);
                 EXTERNAL_on_init = on_init_bench;

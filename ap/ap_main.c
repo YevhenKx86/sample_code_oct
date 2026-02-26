@@ -42,6 +42,10 @@ void OCT_engine_task(beken_thread_arg_t data){
     
     multi_lcd_backlight_open(MULTI_LCD_BACKLIGHT_CTR_PIN);
 
+    rtos_delay_milliseconds(3000);
+
+    bk_printf_deinit();
+
     OCT_UART_reinit();
 
     OCT_init();
@@ -109,7 +113,7 @@ int main(void)
 
     dev_power_ldo33_en();
 
-    uart_task_init();
+    //uart_task_init();
 
     engine_init();    
 

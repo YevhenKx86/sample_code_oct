@@ -16,35 +16,66 @@
 //extern TL VDMA_REGISTER_T*         vdma[];
 //extern TL VDMA_REGISTER_PORT_T*    vdma_port[];
 
-static int linesRx_Actions[NET_LINES_MAX] = {0, 0, 0};
+#define  TMP_DMA_RX_DATA_SIZE  4096
+ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t tmpDmaRxData[TMP_DMA_RX_DATA_SIZE];
 
 int hal_uart_deinit(hal_uart_port_t port){
     return bk_uart_deinit((uint32_t)port-1);
 }
 
-void rx_done_callback(uart_id_t id, void *param){
+// TODO double copy data
+static inline void uart_copy_bytes_to_oct_buf(uart_id_t id){
+    //How much space there is
+    uint32_t space = OctUarts[id].RxCacheCap - (OctUarts[id].RxAvailable - OctUarts[id].RxProcessed);
 
-    /*int bytesCount = bk_uart_read_bytes(id, (void*)(&OctDmaRxBuffers[id][OctUarts[id].RxAvailable]), CONFIG_KFIFO_SIZE, 1);
+    //How much data can be copied
+    uint32_t count = bk_uart_get_port_bytes_available(id); //Inlined vdma_get_available_receive_bytes
+    if (count > space) count = space;
 
-    if(bytesCount > 0){
-        OctUarts[id].RxAvailable += bytesCount;
-    }*/
+    bk_uart_read_port_bytes(id, (void*)tmpDmaRxData, count);
 
-    linesRx_Actions[id]++;
+    //Starting after the last busy byte, copy available count
+    uint32_t wrapping = OctUarts[id].RxCacheCap - 1;
+    for (uint32_t n = OctUarts[id].RxAvailable + 1, copied = 0;  copied < count;  copied++, n++)
+        OctUarts[id].RxCache[ n & wrapping ] = tmpDmaRxData[copied];
+
+    //Safely update the counter
+    OCT_MEM_BARRIER;  OctUarts[id].RxAvailable += count;
+    OCT_stat(OCT_time(), count, &StatUartDmaRxData[id]);
+    
 }
 
+void rx_done_callback(uart_id_t id, void *param){
 
-void OCT_UART_dma_callback(hal_uart_callback_event_t event, void *user_data)
-    {
-        (void)event; (void)user_data;
-    }
+    //uart_copy_bytes_to_oct_buf(id);
+    //How much space there is
+    uint32_t space = OctUarts[id].RxCacheCap - (OctUarts[id].RxAvailable - OctUarts[id].RxProcessed);
 
+    //How much data can be copied
+    uint32_t count = bk_uart_get_port_bytes_available(id); //Inlined vdma_get_available_receive_bytes
+    if (count > space) count = space;
+
+    bk_uart_read_port_bytes(id, (void*)tmpDmaRxData, count);
+
+    //Starting after the last busy byte, copy available count
+    uint32_t wrapping = OctUarts[id].RxCacheCap - 1;
+    for (uint32_t n = OctUarts[id].RxAvailable + 1, copied = 0;  copied < count;  copied++, n++)
+        OctUarts[id].RxCache[ n & wrapping ] = tmpDmaRxData[copied];
+
+    //Safely update the counter
+    OCT_MEM_BARRIER;  OctUarts[id].RxAvailable += count;
+    OCT_stat(OCT_time(), count, &StatUartDmaRxData[id]);
+}
+
+void OCT_UART_dma_callback(hal_uart_callback_event_t event, void *user_data){
+    (void)event; (void)user_data;
+}
 
 //[NOTE]: Called from ISR, so just copy without ANY blocking
-void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data)
-    {
+void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data){
+
         //User data is hal_uart_port_t, we are not using UART0, so actual index in arrays would be one less than passed port id
-        const uint32_t line_id = ((uint32_t)(uintptr_t)user_data) - 1;
+        /*const uint32_t line_id = ((uint32_t)(uintptr_t)user_data) - 1;
         if (line_id >= NET_LINES_MAX) return;
 
         if(event == HAL_UART_EVENT_READY_TO_READ){
@@ -63,7 +94,7 @@ void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data)
                     }
                 }
             //}
-        }
+        }*/
 
         
 
@@ -114,24 +145,24 @@ void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data)
                 //Overrun Error   Receiver buffer full, new data lost or overwritten
         }
         else if (event == HAL_UART_EVENT_READY_TO_WRITE) {}*/
-    }
-
-
+}
 
 void OCT_UART_reinit_port(hal_uart_port_t port)
     {
         uint32_t line_id = ((uint32_t)port) - 1;
 
-        //cfg UART
-
-        //BK_LOGI(NULL, "%s: start initializing UART%d\r\n", __func__, line_id);
-
         bk_uart_driver_init();
-        bk_uart_deinit(line_id);  // Deinit first to reset any previous state
+        bk_uart_deinit(line_id);
+
+        OctUarts[line_id].RxAvailable = 0;
+        OctUarts[line_id].RxProcessed = 0;
+        OctUarts[line_id].RxCache = OctDmaRxBuffers[line_id];
+        OctUarts[line_id].RxCacheCap = OCT_UART_DMA_CAP;
 
         uart_config_t config = {0};
+
         os_memset(&config, 0, sizeof(uart_config_t));
-        config.baud_rate = 3000000; //  3000000 not in SDK's supported baud rates list, only 2000000 and 3250000
+        config.baud_rate = 115200;
         config.data_bits = UART_DATA_8_BITS;
         config.parity = UART_PARITY_NONE;
         config.stop_bits = UART_STOP_BITS_1;
@@ -141,11 +172,12 @@ void OCT_UART_reinit_port(hal_uart_port_t port)
             DMP("UART initialization failed: %d", status);
         }
 
-        //bk_uart_register_rx_isr(line_id, rx_done_callback, (void*)(uintptr_t)line_id);
-        //bk_uart_enable_rx_interrupt(line_id);
+        bk_uart_register_rx_isr(line_id, rx_done_callback, (void*)(uintptr_t)line_id);
+        bk_uart_enable_rx_interrupt(line_id);
+
+        
 
         //cfg DMA
-
         // DMA initialized by CONFIG_UART_RX_DMA and CONFIG_UART_TX_DMA macros
 
         //---------------------------------------------------------------------------
