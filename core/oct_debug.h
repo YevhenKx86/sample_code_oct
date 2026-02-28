@@ -20,7 +20,12 @@ void OCT_print_debug_stats(uint16_t* framebuf, uint32_t vid)
         //UARTs
         for (int i = 0; i < NET_LINES_MAX; i++)
         {
-            sprintf(dbgstr, "RX%5lu %2lu %3lu TX%5lu %3lu",  OctUarts[i].RxStatBandwidth.CounterSaved, OctUarts[i].RxStatPackets.CounterSaved, OctUarts[i].RxStatSkipped%1000,   OctUarts[i].TxStatBandwidth.CounterSaved, OctUarts[i].TxStatDropped%1000);
+            sprintf(dbgstr, "RX%5lu %2lu %3lu TX%5lu %3lu",  
+                OctUarts[i].RxStatBandwidth.CounterSaved, 
+                OctUarts[i].RxStatPackets.CounterSaved, 
+                OctUarts[i].RxStatSkipped%1000,   
+                OctUarts[i].TxStatBandwidth.CounterSaved, 
+                OctUarts[i].TxStatDropped%1000);
             OCT_RENDER_text(framebuf, dbgstr, 4, 10 * i, COLOR_YELLOW);
         }
     }

@@ -14,29 +14,29 @@
 
 
 //Task to parse bytes copied out from DMA RX-buffer, verify packets and route them depending on type
-void OCT_UART_task(void* arg)
+void OCT_UART_task(void* arg){
+
+    //octPacket_t pkt;
+    //pkt.Header.Type = 1; //Just for testing, send some data to host to see it in logs
+
+    while(1)
     {
-        //Task will run each 2 ms (but less often in simulator)
-        //const TickType_t TASK_PARSE_TRAFFIC_SLEEP_TIME_MS = 2000; //pdMS_TO_TICKS(2);
-        //TickType_t last_wake = xTaskGetTickCount();
-
-        do
+        //Process each uart's buffer
+        for (uint32_t line_id = 0;  line_id < NET_LINES_MAX;  line_id++)
         {
-            //Process each uart's buffer
-            for (uint32_t line_id = 0;  line_id < NET_LINES_MAX;  line_id++)
-            {
-                OCT_UART_dma_callback2(HAL_UART_EVENT_READY_TO_READ, (void*)(uintptr_t)(line_id+1));
+            //OCT_UART_dma_callback2(HAL_UART_EVENT_READY_TO_READ, (void*)(uintptr_t)(line_id+1));
+            OCT_per_second(OCT_time(), (octStatPerSec_t*)&OctUarts[line_id].RxStatPackets);
+            OCT_per_second(OCT_time(), (octStatPerSec_t*)&OctUarts[line_id].RxStatBandwidth);
+            OCT_per_second(OCT_time(), (octStatPerSec_t*)&OctUarts[line_id].TxStatBandwidth);
+            OCT_NET_extract_packets(false, line_id, &OctUarts[line_id]);
+        }                
+    
+        OCT_text(6, "Time %d s", rtos_get_time()/1000);    
+              
+        //OCT_UART_send(0, &pkt);
 
-                OCT_per_second(OCT_time(), (octStatPerSec_t*)&OctUarts[line_id].RxStatPackets);
-                OCT_per_second(OCT_time(), (octStatPerSec_t*)&OctUarts[line_id].RxStatBandwidth);
-                OCT_per_second(OCT_time(), (octStatPerSec_t*)&OctUarts[line_id].TxStatBandwidth);
-                OCT_NET_extract_packets(false, line_id, &OctUarts[line_id]);
-            }
-                    
-
-            //vTaskDelayUntil(&last_wake, TASK_PARSE_TRAFFIC_SLEEP_TIME_MS);         
-            rtos_delay_milliseconds(2);   
-        }
-        while (arg == NULL);
+        rtos_delay_milliseconds(2); 
     }
+
+}
 

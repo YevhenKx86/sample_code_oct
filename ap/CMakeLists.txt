@@ -8,6 +8,7 @@ list(APPEND incs
     # ./benchmark
     ./components
     ./components/multi_lcd
+    ./components/dev_uart
     ./oct_port
     # ./utills
     ../bk7258_sdk/ap/components/multimedia/include
@@ -18,6 +19,7 @@ list(APPEND srcs
     # ./blur/blur.c
     # ./palette/palette.c
     # ./test/mlcd_test.c
+    ./components/dev_uart/dev_uart_drv.c
     ./components/dev_power.c
     ./components/multi_lcd/multi_lcd.c
     # ./utills/time_labels.c

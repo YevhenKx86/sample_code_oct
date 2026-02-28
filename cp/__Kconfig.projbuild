@@ -1,0 +1,12 @@
+menu "WOWCUBE_SOLUTION"
+
+    config INTEGRATION_WOWCUBE
+        bool "WowCube integration"
+        default y
+
+    config DEFAULT_UART_DEBUG_FUNCTION_DISABLED
+        depends on INTEGRATION_WOWCUBE
+        bool "Default uart debug function disabled"
+        default y
+
+endmenu

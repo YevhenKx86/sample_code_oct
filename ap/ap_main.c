@@ -42,15 +42,13 @@ void OCT_engine_task(beken_thread_arg_t data){
     
     multi_lcd_backlight_open(MULTI_LCD_BACKLIGHT_CTR_PIN);
 
-    rtos_delay_milliseconds(3000);
-
-    bk_printf_deinit();
-
     OCT_UART_reinit();
 
     OCT_init();
 
     OCT_set_state(OCT_STATE_MEETING);
+
+    rtos_delay_milliseconds(20);
 
     while (1) {
         OCT_run();
@@ -64,7 +62,7 @@ bk_err_t engine_init(void){
                             BEKEN_DEFAULT_WORKER_PRIORITY,
                             "test",
                             (beken_thread_function_t)OCT_engine_task,
-                            4*1024,
+                            16*1024,
                             (beken_thread_arg_t)NULL);
     if (ret)
     {
@@ -77,10 +75,11 @@ bk_err_t engine_init(void){
     return ret;
 }
 //-----------------------------------------------------------------------------
-void OCT_uart_pol_task(beken_thread_arg_t data){
-    while(1){
-        OCT_UART_task(data);
-    }
+void OCT_uart_pol_task(beken_thread_arg_t data){   
+
+    rtos_delay_milliseconds(20);
+
+    OCT_UART_task(data);        
 }
 
 bk_err_t uart_task_init(void){
@@ -90,7 +89,7 @@ bk_err_t uart_task_init(void){
                             BEKEN_DEFAULT_WORKER_PRIORITY,
                             "oct_uart_pol_task",
                             (beken_thread_function_t)OCT_uart_pol_task,
-                            4*1024,
+                            16*1024,
                             (beken_thread_arg_t)NULL);
     if (ret)
     {
@@ -113,9 +112,9 @@ int main(void)
 
     dev_power_ldo33_en();
 
-    //uart_task_init();
-
     engine_init();    
+
+    uart_task_init();
 
     return 0;
 }

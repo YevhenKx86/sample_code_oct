@@ -60,7 +60,7 @@ ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN float   INNER_DELTA = 18, OUTER_DELTA = 12, LIM
 
 //Network
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN octSignalMeet_t             OctHwids[CUBES_COUNT] = {0};//OCT_HWID_NONE, OCT_HWID_NONE, OCT_HWID_NONE, OCT_HWID_NONE, OCT_HWID_NONE, OCT_HWID_NONE, OCT_HWID_NONE, OCT_HWID_NONE};
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint32_t                                                     OctHwidsNum = 0;
+TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint32_t                    OctHwidsNum = 0;
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN octInfo_t                   OctInfo[STREAMS_TOTAL] = {0};                             //The most recent info packets received by this module
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN int                         OctNetOutdated = 0;                                     //Critical error. Set when received a packet with seq from far future; forces module to request server to reload; cleared on server reload command
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint32_t                    OctNetDisconnections = 0;                               //Current maximum number of timed out pings, resets to 0 when everything is connected

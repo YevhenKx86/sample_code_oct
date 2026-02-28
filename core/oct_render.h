@@ -76,7 +76,6 @@ static void OCT_RENDER_text(uint16_t* framebuf, const char* text, int x, int y, 
             }
             */
 
-
             //Set pixels by mask
             for(int yy = 0;  yy < 8;  yy+=1)
             for(int xx = 0, mb = OCT_BITFONT_BORDER[(*c)-0x20][yy], mf = OCT_BITFONT[(*c)-0x20][yy];  xx < 8;  xx+=1,  mb = mb >> 1,  mf = mf >> 1)

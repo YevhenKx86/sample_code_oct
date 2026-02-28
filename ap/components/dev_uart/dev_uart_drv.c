@@ -4,11 +4,18 @@
 
 
 #define TAG "dev_udrv"
-#define LOGE(...) BK_LOGE(TAG, ##__VA_ARGS__)
+/*#define LOGE(...) BK_LOGE(TAG, ##__VA_ARGS__)
 #define LOGW(...) BK_LOGW(TAG, ##__VA_ARGS__)
 #define LOGI(...) BK_LOGI(TAG, ##__VA_ARGS__)
 #define LOGD(...) BK_LOGD(TAG, ##__VA_ARGS__)
-#define LOGV(...) BK_LOGV(TAG, ##__VA_ARGS__)
+#define LOGV(...) BK_LOGV(TAG, ##__VA_ARGS__)*/
+
+#define LOGE(...) 
+#define LOGW(...) 
+#define LOGI(...) 
+#define LOGD(...) 
+#define LOGV(...) 
+
 
 
 typedef struct

@@ -9,94 +9,54 @@
 //#include "task_utils.h"
 #include "oct_vars.h"
 #include "oct_helpers.h"
-#include "driver/uart.h"
-#include "uart_driver.h"
+#include "dev_uart_drv.h"
 
 //Defined inside HAL
 //extern TL VDMA_REGISTER_T*         vdma[];
 //extern TL VDMA_REGISTER_PORT_T*    vdma_port[];
 
+#define OCT_UART_BAUDRATE 3000000
+
 #define  TMP_DMA_RX_DATA_SIZE  4096
 ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t tmpDmaRxData[TMP_DMA_RX_DATA_SIZE];
 
-int hal_uart_deinit(hal_uart_port_t port){
-    return bk_uart_deinit((uint32_t)port-1);
-}
-
 // TODO double copy data
-static inline void uart_copy_bytes_to_oct_buf(uart_id_t id){
+//[NOTE]: Called from task
+void rx_done_callback(dev_uart_drv_id_t drv_id, const uint8_t *buff, uint32_t buff_len){
+
     //How much space there is
-    uint32_t space = OctUarts[id].RxCacheCap - (OctUarts[id].RxAvailable - OctUarts[id].RxProcessed);
+    uint32_t space = OctUarts[drv_id].RxCacheCap - (OctUarts[drv_id].RxAvailable - OctUarts[drv_id].RxProcessed);
 
     //How much data can be copied
-    uint32_t count = bk_uart_get_port_bytes_available(id); //Inlined vdma_get_available_receive_bytes
+    uint32_t count = buff_len;
     if (count > space) count = space;
 
-    bk_uart_read_port_bytes(id, (void*)tmpDmaRxData, count);
-
     //Starting after the last busy byte, copy available count
-    uint32_t wrapping = OctUarts[id].RxCacheCap - 1;
-    for (uint32_t n = OctUarts[id].RxAvailable + 1, copied = 0;  copied < count;  copied++, n++)
-        OctUarts[id].RxCache[ n & wrapping ] = tmpDmaRxData[copied];
+    uint32_t wrapping = OctUarts[drv_id].RxCacheCap - 1;
+    for (uint32_t n = OctUarts[drv_id].RxAvailable + 1, copied = 0;  copied < count;  copied++, n++)
+        OctUarts[drv_id].RxCache[ n & wrapping ] = buff[copied];
 
     //Safely update the counter
-    OCT_MEM_BARRIER;  OctUarts[id].RxAvailable += count;
-    OCT_stat(OCT_time(), count, &StatUartDmaRxData[id]);
+    OCT_MEM_BARRIER;  OctUarts[drv_id].RxAvailable += count;
+    OCT_stat(OCT_time(), count, &StatUartDmaRxData[drv_id]);
+
+    OCT_text(-1, "[%d] %d %d %d", drv_id, buff_len, space, OctUarts[drv_id].RxAvailable);   
+        
+    /*if(buff_len > 0){
+        char str[128] = {0};
+        for(int i = 0; i < buff_len; i++)
+            sprintf(str + 2*i, "%02X ", buff[i]);
+        OCT_text(-1, "%s", str);
+    }*/
     
 }
 
-void rx_done_callback(uart_id_t id, void *param){
-
-    //uart_copy_bytes_to_oct_buf(id);
-    //How much space there is
-    uint32_t space = OctUarts[id].RxCacheCap - (OctUarts[id].RxAvailable - OctUarts[id].RxProcessed);
-
-    //How much data can be copied
-    uint32_t count = bk_uart_get_port_bytes_available(id); //Inlined vdma_get_available_receive_bytes
-    if (count > space) count = space;
-
-    bk_uart_read_port_bytes(id, (void*)tmpDmaRxData, count);
-
-    //Starting after the last busy byte, copy available count
-    uint32_t wrapping = OctUarts[id].RxCacheCap - 1;
-    for (uint32_t n = OctUarts[id].RxAvailable + 1, copied = 0;  copied < count;  copied++, n++)
-        OctUarts[id].RxCache[ n & wrapping ] = tmpDmaRxData[copied];
-
-    //Safely update the counter
-    OCT_MEM_BARRIER;  OctUarts[id].RxAvailable += count;
-    OCT_stat(OCT_time(), count, &StatUartDmaRxData[id]);
-}
-
-void OCT_UART_dma_callback(hal_uart_callback_event_t event, void *user_data){
+/*void OCT_UART_dma_callback(hal_uart_callback_event_t event, void *user_data){
     (void)event; (void)user_data;
-}
+}*/
 
 //[NOTE]: Called from ISR, so just copy without ANY blocking
-void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data){
-
-        //User data is hal_uart_port_t, we are not using UART0, so actual index in arrays would be one less than passed port id
-        /*const uint32_t line_id = ((uint32_t)(uintptr_t)user_data) - 1;
-        if (line_id >= NET_LINES_MAX) return;
-
-        if(event == HAL_UART_EVENT_READY_TO_READ){
-            //if(linesRx_Actions[line_id] > 0){
-                //linesRx_Actions[line_id] = 0;
-
-                uint32_t space = OctUarts[line_id].RxCacheCap - (OctUarts[line_id].RxAvailable - OctUarts[line_id].RxProcessed);
-
-                if(space > 0){  // ring buffer wrapping
-                    int bytesCount = bk_uart_read_port_bytes(line_id, (void*)(&OctUarts[line_id].RxCache[OctUarts[line_id].RxAvailable]), space);
-                    if(bytesCount > 0){
-                        //Safely update the counter
-                        OCT_MEM_BARRIER;  
-                        OctUarts[line_id].RxAvailable += bytesCount;
-                        OCT_stat(OCT_time(), bytesCount, &StatUartDmaRxData[line_id]);
-                    }
-                }
-            //}
-        }*/
-
-        
+void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data){      
 
         /*const uint32_t rx_channel_offset = OCT_LINE_TO_RX_CHANNEL_OFFSET[line_id];
 
@@ -147,46 +107,18 @@ void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data){
         else if (event == HAL_UART_EVENT_READY_TO_WRITE) {}*/
 }
 
-void OCT_UART_reinit_port(hal_uart_port_t port)
-    {
-        uint32_t line_id = ((uint32_t)port) - 1;
+void OCT_UART_reinit_port(hal_uart_port_t port){
 
-        bk_uart_driver_init();
-        bk_uart_deinit(line_id);
+        uint32_t line_id = ((uint32_t)port);
 
-        OctUarts[line_id].RxAvailable = 0;
-        OctUarts[line_id].RxProcessed = 0;
-        OctUarts[line_id].RxCache = OctDmaRxBuffers[line_id];
-        OctUarts[line_id].RxCacheCap = OCT_UART_DMA_CAP;
-
-        uart_config_t config = {0};
-
-        os_memset(&config, 0, sizeof(uart_config_t));
-        config.baud_rate = 115200;
-        config.data_bits = UART_DATA_8_BITS;
-        config.parity = UART_PARITY_NONE;
-        config.stop_bits = UART_STOP_BITS_1;
-        config.flow_ctrl = UART_FLOWCTRL_DISABLE;
-        config.src_clk = UART_SCLK_XTAL_26M;
-        if (bk_uart_init(line_id, &config) != BK_OK) {
-            DMP("UART initialization failed: %d", status);
-        }
-
-        bk_uart_register_rx_isr(line_id, rx_done_callback, (void*)(uintptr_t)line_id);
-        bk_uart_enable_rx_interrupt(line_id);
-
+        //bk_printf_deinit();
+        dev_uart_drv_init((dev_uart_drv_id_t)line_id, (uart_id_t)line_id, OCT_UART_BAUDRATE, rx_done_callback);            
         
-
-        //cfg DMA
-        // DMA initialized by CONFIG_UART_RX_DMA and CONFIG_UART_TX_DMA macros
-
-        //---------------------------------------------------------------------------
-
         //Accepted ports are only 1, 2, 3. Adjust mapping to line id if this ever changes.
-        //uint32_t line_id = ((uint32_t)port) - 1;
+        /*uint32_t line_id = ((uint32_t)port) - 1;
 
         //Configure port
-        /*hal_uart_config_t uart_config = {HAL_UART_BAUDRATE_3000000, HAL_UART_WORD_LENGTH_8, HAL_UART_STOP_BIT_1, HAL_UART_PARITY_NONE};
+        hal_uart_config_t uart_config = {HAL_UART_BAUDRATE_3000000, HAL_UART_WORD_LENGTH_8, HAL_UART_STOP_BIT_1, HAL_UART_PARITY_NONE};
         hal_uart_status_t status = hal_uart_init(port, &uart_config);
         if (status != HAL_UART_STATUS_OK) { DMP("UART initialization failed: %d", status); }
 
@@ -205,128 +137,80 @@ void OCT_UART_reinit_port(hal_uart_port_t port)
         if (status != HAL_UART_STATUS_OK) { DMP("UART DMA initialization failed: %d", status); return; }
 
         status = hal_uart_register_callback(port, OCT_UART_dma_callback, (void*)port);
-        if (status != HAL_UART_STATUS_OK) { DMP("UART DMA callback initialization failed: %d", status); return; }*/
-    }
-
+        if (status != HAL_UART_STATUS_OK) { DMP("UART DMA callback initialization failed: %d", status); return; } */ 
+}
 
 //[NOTE]: Called from main but also on each wake up
-bool OCT_UART_reinit()
-    {
-        OCT_UART_reinit_port(HAL_UART_1);
-        OCT_UART_reinit_port(HAL_UART_2);
-        OCT_UART_reinit_port(HAL_UART_3);
+bool OCT_UART_reinit(){
 
-        OctUartInitialized = true;
+    //Once per OS lifetime create internal objects and setup buffers
+    for (int i = 0; i < NET_LINES_MAX; i++){
 
+        os_memset((void*)&OctUarts[i], 0, sizeof(octUart_t));
 
-        //Once per OS lifetime create internal objects and setup buffers
-        /*if (OctSleepHandleUart == 0)
-        {
-            OctSleepHandleUart = hal_sleep_manager_set_sleep_handle(OCT_SLEEP_HANDLE_NAME_UART);
-            for (int i = 0; i < NET_LINES_MAX; i++) OctUarts[i].TxMutex = xSemaphoreCreateMutex(),  OctUarts[i].RxCache = OctUartsCache[i],  OctUarts[i].RxCacheCap = OCT_UART_BUF_CAP;
-        }
+        OctUarts[i].TxMutex = xSemaphoreCreateMutex();
+        OctUarts[i].RxCache = OctUartsCache[i];
+        OctUarts[i].RxCacheCap = OCT_UART_BUF_CAP;
+    } 
 
-        //Lock sleep as soon as UARTs are active
-        hal_sleep_manager_lock_sleep(OctSleepHandleUart);
+    //Reset parsing buffer
+    for (int i = 0; i < NET_LINES_MAX; i++) OctUarts[i].RxAvailable = OctUarts[i].RxProcessed = 0;
 
-        //Reset parsing buffer
-        for (int i = 0; i < NET_LINES_MAX; i++) OctUarts[i].RxAvailable = OctUarts[i].RxProcessed = 0;
+    OCT_UART_reinit_port(UART_ID_0);
+    OCT_UART_reinit_port(UART_ID_1);
+    OCT_UART_reinit_port(UART_ID_2);
 
-        // Configure pins for UART 1
-        hal_gpio_init(HAL_GPIO_4),  hal_pinmux_set_function(HAL_GPIO_4, HAL_GPIO_4_U1RXD);
-        hal_gpio_init(HAL_GPIO_5),  hal_pinmux_set_function(HAL_GPIO_5, HAL_GPIO_5_U1TXD);
+    OctUartInitialized = true;
 
-        // Configure pins for UART 2
-        hal_gpio_init(HAL_GPIO_6),  hal_pinmux_set_function(HAL_GPIO_6, HAL_GPIO_6_U2RXD);
-        hal_gpio_init(HAL_GPIO_7),  hal_pinmux_set_function(HAL_GPIO_7, HAL_GPIO_7_U2TXD);
-
-        // Configure pins for UART 3
-#ifdef HW_VERSION_3_2_5
-        hal_gpio_init(HAL_GPIO_2),  hal_pinmux_set_function(HAL_GPIO_2, HAL_GPIO_2_U3RXD);
-        hal_gpio_init(HAL_GPIO_3),  hal_pinmux_set_function(HAL_GPIO_3, HAL_GPIO_3_U3TXD);
-#else
-        hal_gpio_init(HAL_GPIO_18), hal_pinmux_set_function(HAL_GPIO_18, HAL_GPIO_18_U3RXD);
-        hal_gpio_init(HAL_GPIO_22), hal_pinmux_set_function(HAL_GPIO_22, HAL_GPIO_22_U3TXD);
-#endif
-
-        //[TODO]: Use screen to signal about errors
-        //Only ports with values 1, 2, 3 are supported
-        OCT_UART_reinit_port(HAL_UART_1),  OCT_UART_reinit_port(HAL_UART_2),  OCT_UART_reinit_port(HAL_UART_3);*/
-
-        //OctUartInitialized = true;
-        return true;
-    }
-
+    return true;
+}
 
 //When trying to send packet several times but DMA buffer is still full, old code tries to reset port
-void OCT_UART_reset_port(uint32_t line_id)
-    {
+void OCT_UART_reset_port(uint32_t line_id){
 
-        hal_uart_port_t port = (hal_uart_port_t)(line_id + 1);
-        hal_uart_deinit(port);
-        OCT_UART_reinit_port(port);
-        //...Reset some 'tx overflow' counter
-        OCT_terminate("OCT_UART_reset_port NIY");
-
-        /*hal_uart_port_t port = (hal_uart_port_t)(line_id+1);
-        hal_uart_deinit(port);
-        OCT_UART_reinit_port(port);
-        //...Reset some 'tx overflow' counter
-        OCT_terminate("OCT_UART_reset_port NIY");*/
-    }
-
+    //hal_uart_port_t port = (hal_uart_port_t)(line_id + 1);
+    dev_uart_drv_deinit(line_id);
+    OCT_UART_reinit_port(line_id);
+    //...Reset some 'tx overflow' counter
+    OCT_terminate("OCT_UART_reset_port NIY");
+}
 
 //Called before sleep
-void OCT_UART_deinit(void)
-    {
+void OCT_UART_deinit(void){
 
-        OctUartInitialized = false;
+    OctUartInitialized = false;
 
-        hal_uart_deinit(HAL_UART_1);
-        hal_uart_deinit(HAL_UART_2);
-        hal_uart_deinit(HAL_UART_3);
-
-        //No new packets can be send
-        /*OctUartInitialized = false;
-
-        //[TODO]: Wait on tx mutex to give module some time to flush?
-        hal_uart_deinit(HAL_UART_1), hal_uart_deinit(HAL_UART_2), hal_uart_deinit(HAL_UART_3);
-
-        // Reconfigure pins as I/O
-        // UART1 RX\TX
-        hal_gpio_init(HAL_GPIO_4),  hal_pinmux_set_function(HAL_GPIO_4, HAL_GPIO_4_GPIO4),      hal_gpio_set_direction(HAL_GPIO_4, HAL_GPIO_DIRECTION_INPUT),  hal_gpio_pull_up(HAL_GPIO_4);
-        hal_gpio_init(HAL_GPIO_5),  hal_pinmux_set_function(HAL_GPIO_5, HAL_GPIO_5_GPIO5),      hal_gpio_set_direction(HAL_GPIO_5, HAL_GPIO_DIRECTION_OUTPUT), hal_gpio_set_output(HAL_GPIO_5, HAL_GPIO_DATA_HIGH);
-
-        // UART2 RX\TX
-        hal_gpio_init(HAL_GPIO_6),  hal_pinmux_set_function(HAL_GPIO_6, HAL_GPIO_6_GPIO6),      hal_gpio_set_direction(HAL_GPIO_6, HAL_GPIO_DIRECTION_INPUT),  hal_gpio_pull_up(HAL_GPIO_6);
-        hal_gpio_init(HAL_GPIO_7),  hal_pinmux_set_function(HAL_GPIO_7, HAL_GPIO_7_GPIO7),      hal_gpio_set_direction(HAL_GPIO_7, HAL_GPIO_DIRECTION_OUTPUT), hal_gpio_set_output(HAL_GPIO_7, HAL_GPIO_DATA_HIGH);
-
-#ifdef HW_VERSION_3_2_5
-        // UART3 RX\TX
-        hal_gpio_init(HAL_GPIO_2),  hal_pinmux_set_function(HAL_GPIO_2, HAL_GPIO_2_GPIO2),      hal_gpio_set_direction(HAL_GPIO_2, HAL_GPIO_DIRECTION_INPUT),  hal_gpio_pull_up(HAL_GPIO_2);
-        hal_gpio_init(HAL_GPIO_3),  hal_pinmux_set_function(HAL_GPIO_3, HAL_GPIO_3_GPIO3),      hal_gpio_set_direction(HAL_GPIO_3, HAL_GPIO_DIRECTION_OUTPUT), hal_gpio_set_output(HAL_GPIO_3, HAL_GPIO_DATA_HIGH);
-#else
-        // UART3 RX\TX
-        hal_gpio_init(HAL_GPIO_18), hal_pinmux_set_function(HAL_GPIO_18, HAL_GPIO_18_GPIO18),   hal_gpio_set_direction(HAL_GPIO_18, HAL_GPIO_DIRECTION_INPUT),  hal_gpio_pull_up(HAL_GPIO_18);
-        hal_gpio_init(HAL_GPIO_22), hal_pinmux_set_function(HAL_GPIO_22, HAL_GPIO_22_GPIO22),   hal_gpio_set_direction(HAL_GPIO_22, HAL_GPIO_DIRECTION_OUTPUT), hal_gpio_set_output(HAL_GPIO_22, HAL_GPIO_DATA_HIGH);
-#endif
-
-        //UARTs are ready to sleep
-        hal_sleep_manager_unlock_sleep(OctSleepHandleUart);*/
-    }
+    dev_uart_drv_deinit(DEV_UART_DRV_ID_0);
+    dev_uart_drv_deinit(DEV_UART_DRV_ID_1);
+    dev_uart_drv_deinit(DEV_UART_DRV_ID_2);
+}
 
 
 //Put data to DMA buffer of single port. If there is not enough space then packet would be fully discarded
-void OCT_UART_send(uint32_t line_id, const octPacket_t* pkt)
-    {
-        //Safety check
-        if (!OctUartInitialized  ||  line_id >= NET_LINES_MAX) return;
+void OCT_UART_send(uint32_t line_id, const octPacket_t* pkt){
 
-        //Size of packet
-        uint32_t data_size = PKT_SIZES[pkt->Header.Type];
-        OctUarts[line_id].TxStatBandwidth.Counter += data_size;
 
-        bk_uart_write_bytes(line_id, pkt, data_size); 
+    OCT_text(-1, "tx %d", line_id);
+    //Safety check
+    if (!OctUartInitialized  ||  line_id >= NET_LINES_MAX) return;
+
+    //Size of packet
+    uint32_t data_size = PKT_SIZES[pkt->Header.Type];
+    OctUarts[line_id].TxStatBandwidth.Counter += data_size;
+
+    //Lock mutex, this function can be called from different tasks
+    //if (xSemaphoreTake(OctUarts[line_id].TxMutex, portMAX_DELAY) == pdTRUE){
+
+    //bk_err_t err = 
+    dev_uart_drv_write((dev_uart_drv_id_t)line_id, (const uint8_t*)pkt, data_size);
+        OctUarts[line_id].TxStatWritten += data_size;
+
+        //OCT_text(-1, "   tx %d, l=%d, err=%d, %ds", line_id, data_size, err, rtos_get_time()/1000);
+
+
+        //Release mutex
+        //xSemaphoreGive(OctUarts[line_id].TxMutex);
+    //}
 
         //Lock mutex, this function can be called from different tasks
         /*const uint32_t tx_channel_offset = OCT_LINE_TO_TX_CHANNEL_OFFSET[line_id];

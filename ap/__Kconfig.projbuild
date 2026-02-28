@@ -1,0 +1,100 @@
+menu "WOWCUBE_SOLUTION"
+
+    config INTEGRATION_WOWCUBE
+        bool "WowCube integration"
+        default y
+
+    config DEFAULT_UART_DEBUG_FUNCTION_DISABLED
+        depends on INTEGRATION_WOWCUBE
+        bool "Default uart debug function disabled"
+        default y
+
+    config USBH_SIM_CH340_UART_EN
+        bool "USB host simulate ch340 uart function enable"
+        default y
+
+    config USBH_SIM_CH340_UART_USE_DEBUG
+        depends on USBH_SIM_CH340_UART_EN
+        bool "USB host simulate ch340 uart function use debug"
+        default y
+
+    config USBH_SIM_CH340_UART_USE_DEBUG_AND_THREAD
+        depends on USBH_SIM_CH340_UART_USE_DEBUG
+        bool "USB host simulate ch340 uart function use debug, and shell write based on thread"
+        default y
+
+    config USBH_SIM_CH340_UART_USE_DEBUG_AND_CMD_MODIFY
+        depends on USBH_SIM_CH340_UART_USE_DEBUG
+        bool "USB host simulate ch340 uart function use debug, and some shell command need special modifications"
+        default y
+
+    config WIFI_FUNC_EN
+        bool "WiFi function enable"
+        default y
+
+    config WIFI_FUNC_USE_DEBUG
+        depends on WIFI_FUNC_EN
+        bool "WiFi function use debug"
+        default y
+
+    config WIFI_FUNC_USE_DEBUG_AND_THREAD
+        depends on WIFI_FUNC_USE_DEBUG
+        bool "WiFi function use debug, and shell write based on thread"
+        default y
+
+    config WIFI_FUNC_USE_DEBUG_AND_CMD_MODIFY
+        depends on WIFI_FUNC_USE_DEBUG
+        bool "WiFi function use debug, and some shell command need special modifications"
+        default y
+
+    config WIFI_FUNC_USE_DEBUG_AND_RX_EN
+        depends on WIFI_FUNC_USE_DEBUG
+        bool "WiFi function use debug, and rx datas function enable"
+        default y
+    config IMAGE_PLAY_EN
+        bool "Image play enable"
+        default y
+        help
+            0 - disable
+            1 - enable
+
+    config IMAGE_PLAY_BACKLIGHT_INDEPENDENT_CTR
+        depends on IMAGE_PLAY_EN
+        bool "image play backlight independent control"
+        default y
+
+    config IMAGE_PLAY_USE_MODE
+        depends on IMAGE_PLAY_EN
+        bool "image play use poll mode or tick mode"
+        default y
+        help
+            0 - tick mode(timer control)
+            1 - poll mode(continuous)
+
+    config IMAGE_PLAY_USE_BLUR
+        depends on IMAGE_PLAY_EN
+        bool "image play use blur before display"
+        default y
+
+    config FS_USE_PSRAM_CACHE
+        bool "File system datas use psram cache"
+        default y
+        help
+            0 - disable
+            1 - enable
+
+    config JPEG_DECODE_USE_HW
+        bool "JPEG decode use hardware mode"
+        default y
+        help
+            0 - software mode
+            1 - hardware mode.
+
+    config BK_MTS_USE_GPIO
+        bool "BK measure timing sequence use gpio"
+        default n
+        help
+            0 - disable
+            1 - enable
+
+endmenu
