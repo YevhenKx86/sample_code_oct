@@ -48,7 +48,7 @@ void OCT_engine_task(beken_thread_arg_t data){
 
     OCT_set_state(OCT_STATE_MEETING);
 
-    rtos_delay_milliseconds(20);
+    rtos_delay_milliseconds(2000);
 
     while (1) {
         OCT_run();
@@ -77,7 +77,7 @@ bk_err_t engine_init(void){
 //-----------------------------------------------------------------------------
 void OCT_uart_pol_task(beken_thread_arg_t data){   
 
-    rtos_delay_milliseconds(20);
+    rtos_delay_milliseconds(2000);
 
     OCT_UART_task(data);        
 }

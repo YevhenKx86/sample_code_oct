@@ -15,10 +15,7 @@
 //extern TL VDMA_REGISTER_T*         vdma[];
 //extern TL VDMA_REGISTER_PORT_T*    vdma_port[];
 
-#define OCT_UART_BAUDRATE 3000000
-
-#define  TMP_DMA_RX_DATA_SIZE  4096
-ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t tmpDmaRxData[TMP_DMA_RX_DATA_SIZE];
+#define OCT_UART_BAUDRATE 4333333
 
 // TODO double copy data
 //[NOTE]: Called from task
@@ -42,12 +39,12 @@ void rx_done_callback(dev_uart_drv_id_t drv_id, const uint8_t *buff, uint32_t bu
 
     OCT_text(-1, "[%d] %d %d %d", drv_id, buff_len, space, OctUarts[drv_id].RxAvailable);   
         
-    /*if(buff_len > 0){
+    if(buff_len > 0){
         char str[128] = {0};
-        for(int i = 0; i < buff_len; i++)
-            sprintf(str + 2*i, "%02X ", buff[i]);
+        for(int i = 0; i < 9; i++)
+            sprintf(str + 3*i, "%02X ", buff[i]);
         OCT_text(-1, "%s", str);
-    }*/
+    }
     
 }
 
@@ -58,86 +55,13 @@ void rx_done_callback(dev_uart_drv_id_t drv_id, const uint8_t *buff, uint32_t bu
 //[NOTE]: Called from ISR, so just copy without ANY blocking
 void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data){      
 
-        /*const uint32_t rx_channel_offset = OCT_LINE_TO_RX_CHANNEL_OFFSET[line_id];
-
-        if (event == HAL_UART_EVENT_READY_TO_READ)
-        {
-            ///uint32_t count = vdma[rx_channel_offset]->VDMA_FFCNT;
-            ///for (uint32_t copied = 0;  copied < count;  copied++)
-            ///    (void)(uint8_t)(vdma_port[rx_channel_offset]->VDMA_PORT);
-
-
-            //How much space there is
-            uint32_t space = OctUarts[line_id].RxCacheCap - (OctUarts[line_id].RxAvailable - OctUarts[line_id].RxProcessed);
-
-            //How much data can be copied
-            uint32_t count = vdma[rx_channel_offset]->VDMA_FFCNT; //Inlined vdma_get_available_receive_bytes
-            if (count > space) count = space;
-
-            //[TODO]: Collecting bytes into uint (when possible) before copying into an array probably would be slightly faster. Need additional handling of non-32bit-aligned head and tail bytes though.
-            
-#ifdef OCTSIM
-            //Batch version of extracting bytes from "port" (possible in sim only - to lower CPU load)
-            vdma_port[rx_channel_offset]->VDMA_PORT.MoveToRingBuffer(OctUarts[line_id].RxCache, OctUarts[line_id].RxAvailable + 1, OctUarts[line_id].RxCacheCap, count);
-#else
-            //Starting after the last busy byte, copy available count
-            uint32_t wrapping = OctUarts[line_id].RxCacheCap - 1;
-            for (uint32_t n = OctUarts[line_id].RxAvailable + 1, copied = 0;  copied < count;  copied++, n++)
-                OctUarts[line_id].RxCache[ n & wrapping ] = (uint8_t)(vdma_port[rx_channel_offset]->VDMA_PORT);  //Inlined vdma_pop_data
-
-#endif
-            //Safely update the counter
-            OCT_MEM_BARRIER;  OctUarts[line_id].RxAvailable += count;
-            OCT_stat(OCT_time(), count, &StatUartDmaRxData[line_id]);
-
-            //Unpause parsing task
-            ///BaseType_t hpw = pdFALSE;
-            ///vTaskNotifyGiveFromISR(OctTaskParseTraffic, &hpw);
-            ///portYIELD_FROM_ISR(hpw);
-        }
-        else if (event == HAL_UART_EVENT_TRANSACTION_ERROR)
-        {
-           /// OCT_text(-1, "HAL_UART_EVENT_TRANSACTION_ERROR");
-              //[TODO]: Is it ever registered? Possible errors:
-                //Break Interrupt Line held low longer than a character time (break condition)
-                //Framing Error   Stop bit not detected where expected
-                //Parity Error    Parity bit does not match expected value
-                //Overrun Error   Receiver buffer full, new data lost or overwritten
-        }
-        else if (event == HAL_UART_EVENT_READY_TO_WRITE) {}*/
 }
 
 void OCT_UART_reinit_port(hal_uart_port_t port){
 
         uint32_t line_id = ((uint32_t)port);
 
-        //bk_printf_deinit();
-        dev_uart_drv_init((dev_uart_drv_id_t)line_id, (uart_id_t)line_id, OCT_UART_BAUDRATE, rx_done_callback);            
-        
-        //Accepted ports are only 1, 2, 3. Adjust mapping to line id if this ever changes.
-        /*uint32_t line_id = ((uint32_t)port) - 1;
-
-        //Configure port
-        hal_uart_config_t uart_config = {HAL_UART_BAUDRATE_3000000, HAL_UART_WORD_LENGTH_8, HAL_UART_STOP_BIT_1, HAL_UART_PARITY_NONE};
-        hal_uart_status_t status = hal_uart_init(port, &uart_config);
-        if (status != HAL_UART_STATUS_OK) { DMP("UART initialization failed: %d", status); }
-
-        hal_uart_disable_flowcontrol(port);
-
-        //Configure DMA mode
-        hal_uart_dma_config_t dma_config = {0};
-        dma_config.receive_vfifo_alert_size       = OCT_RECV_ALERT_SIZE;
-        dma_config.receive_vfifo_buffer           = OctDmaRxBuffers[line_id];
-        dma_config.receive_vfifo_buffer_size      = OCT_UART_DMA_CAP;
-        dma_config.receive_vfifo_threshold_size   = OCT_RECV_THRESHOLD_SIZE;
-        dma_config.send_vfifo_buffer              = OctDmaTxBuffers[line_id];
-        dma_config.send_vfifo_buffer_size         = OCT_UART_DMA_CAP;
-        dma_config.send_vfifo_threshold_size      = OCT_SEND_THRESHOLD_SIZE;
-        status = hal_uart_set_dma(port, &dma_config);
-        if (status != HAL_UART_STATUS_OK) { DMP("UART DMA initialization failed: %d", status); return; }
-
-        status = hal_uart_register_callback(port, OCT_UART_dma_callback, (void*)port);
-        if (status != HAL_UART_STATUS_OK) { DMP("UART DMA callback initialization failed: %d", status); return; } */ 
+        dev_uart_drv_init((dev_uart_drv_id_t)line_id, (uart_id_t)line_id, OCT_UART_BAUDRATE, rx_done_callback);             
 }
 
 //[NOTE]: Called from main but also on each wake up
@@ -201,11 +125,11 @@ void OCT_UART_send(uint32_t line_id, const octPacket_t* pkt){
     //Lock mutex, this function can be called from different tasks
     //if (xSemaphoreTake(OctUarts[line_id].TxMutex, portMAX_DELAY) == pdTRUE){
 
-    //bk_err_t err = 
+    bk_err_t err = 
     dev_uart_drv_write((dev_uart_drv_id_t)line_id, (const uint8_t*)pkt, data_size);
         OctUarts[line_id].TxStatWritten += data_size;
 
-        //OCT_text(-1, "   tx %d, l=%d, err=%d, %ds", line_id, data_size, err, rtos_get_time()/1000);
+        OCT_text(-1, "tx %d, l=%d, err=%d, %ds", line_id, data_size, err, rtos_get_time()/1000);
 
 
         //Release mutex

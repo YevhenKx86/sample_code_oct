@@ -16,10 +16,7 @@
 //Task to parse bytes copied out from DMA RX-buffer, verify packets and route them depending on type
 void OCT_UART_task(void* arg){
 
-    //octPacket_t pkt;
-    //pkt.Header.Type = 1; //Just for testing, send some data to host to see it in logs
-
-    while(1)
+    do
     {
         //Process each uart's buffer
         for (uint32_t line_id = 0;  line_id < NET_LINES_MAX;  line_id++)
@@ -31,12 +28,11 @@ void OCT_UART_task(void* arg){
             OCT_NET_extract_packets(false, line_id, &OctUarts[line_id]);
         }                
     
-        OCT_text(6, "Time %d s", rtos_get_time()/1000);    
-              
-        //OCT_UART_send(0, &pkt);
+        OCT_text(7, "Time %d s", rtos_get_time()/1000);    
 
         rtos_delay_milliseconds(2); 
     }
+    while(arg == NULL);
 
 }
 
