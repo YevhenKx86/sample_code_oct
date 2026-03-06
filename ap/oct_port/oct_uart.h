@@ -1,4 +1,8 @@
 #pragma once
+#include "common/bk_typedef.h"
+#include "driver/uart.h"
+#include "driver/hal/hal_uart_types.h"
+#include <stdint.h>
 #include <string.h>
 //#include "memory_attribute.h"
 //#include "uart_dma.h"
@@ -7,45 +11,40 @@
 //#include "FreeRTOS.h"
 //#include "task.h"
 //#include "task_utils.h"
-#include "oct_vars.h"
-#include "oct_helpers.h"
 #include "dev_uart_drv.h"
+#include "oct_helpers.h"
+#include "oct_vars.h"
+#include "oct.h"
+#include "oct_helpers.h"
+#include "oct_port.h"
+#include "os/str.h"
+#include "os/os.h"
+#include "os/mem.h"
 
 //Defined inside HAL
 //extern TL VDMA_REGISTER_T*         vdma[];
 //extern TL VDMA_REGISTER_PORT_T*    vdma_port[];
 
 #define OCT_UART_BAUDRATE 4333333
+#define MAX_DISP_DATA 16
+#define TEST_PAYLOAD_LEN 64UL
+#define TEST_PAYLOAD_CRC 0xBC103D92
+
+// static uint32_t crc = 0;
+// static size_t rx_len = 0;
+
+extern volatile int rx_irq_fired;
+
+static uint8_t uart_rx_buf[16384];
+static size_t uart_rx_buf_pos = 0;
+static beken_thread_t uart_task_hnd = NULL;
+
+static void uart_rx_task (beken_thread_arg_t arg);
 
 // TODO double copy data
 //[NOTE]: Called from task
-void rx_done_callback(dev_uart_drv_id_t drv_id, const uint8_t *buff, uint32_t buff_len){
-
-    //How much space there is
-    uint32_t space = OctUarts[drv_id].RxCacheCap - (OctUarts[drv_id].RxAvailable - OctUarts[drv_id].RxProcessed);
-
-    //How much data can be copied
-    uint32_t count = buff_len;
-    if (count > space) count = space;
-
-    //Starting after the last busy byte, copy available count
-    uint32_t wrapping = OctUarts[drv_id].RxCacheCap - 1;
-    for (uint32_t n = OctUarts[drv_id].RxAvailable + 1, copied = 0;  copied < count;  copied++, n++)
-        OctUarts[drv_id].RxCache[ n & wrapping ] = buff[copied];
-
-    //Safely update the counter
-    OCT_MEM_BARRIER;  OctUarts[drv_id].RxAvailable += count;
-    OCT_stat(OCT_time(), count, &StatUartDmaRxData[drv_id]);
-
-    OCT_text(-1, "[%d] %d %d %d", drv_id, buff_len, space, OctUarts[drv_id].RxAvailable);   
-        
-    if(buff_len > 0){
-        char str[128] = {0};
-        for(int i = 0; i < 9; i++)
-            sprintf(str + 3*i, "%02X ", buff[i]);
-        OCT_text(-1, "%s", str);
-    }
-    
+void rx_done_callback (uart_id_t id, void *param)
+{
 }
 
 /*void OCT_UART_dma_callback(hal_uart_callback_event_t event, void *user_data){
@@ -57,11 +56,24 @@ void OCT_UART_dma_callback2(hal_uart_callback_event_t event, void *user_data){
 
 }
 
-void OCT_UART_reinit_port(hal_uart_port_t port){
+void OCT_UART_reinit_port (hal_uart_port_t port)
+{
+    const uart_config_t cfg =
+    {
+        .baud_rate = OCT_UART_BAUDRATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_NONE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_FLOWCTRL_DISABLE,
+        .src_clk   = UART_SCLK_XTAL_26M,
+        .rx_dma_en = true,
+        .tx_dma_en = true,
+    };
 
-        uint32_t line_id = ((uint32_t)port);
-
-        dev_uart_drv_init((dev_uart_drv_id_t)line_id, (uart_id_t)line_id, OCT_UART_BAUDRATE, rx_done_callback);             
+    BK_LOG_ON_ERR(bk_uart_init((uart_id_t)port, &cfg));
+    // BK_LOG_ON_ERR(bk_uart_register_rx_isr((uart_id_t)port, rx_done_callback, NULL));
+    bk_uart_register_dma_rx_isr((uart_id_t)port, rx_done_callback, NULL);
+    BK_LOG_ON_ERR(bk_uart_enable_rx_interrupt((uart_id_t)port));
 }
 
 //[NOTE]: Called from main but also on each wake up
@@ -80,13 +92,54 @@ bool OCT_UART_reinit(){
     //Reset parsing buffer
     for (int i = 0; i < NET_LINES_MAX; i++) OctUarts[i].RxAvailable = OctUarts[i].RxProcessed = 0;
 
-    OCT_UART_reinit_port(UART_ID_0);
-    OCT_UART_reinit_port(UART_ID_1);
-    OCT_UART_reinit_port(UART_ID_2);
+    OCT_UART_reinit_port(HAL_UART_0);
+    OCT_UART_reinit_port(HAL_UART_1);
+    OCT_UART_reinit_port(HAL_UART_2);
+
+    rtos_create_thread(&uart_task_hnd, BEKEN_DEFAULT_WORKER_PRIORITY, "uart_rx", uart_rx_task, 8192, NULL);
 
     OctUartInitialized = true;
 
     return true;
+}
+
+static void uart_rx_task (beken_thread_arg_t arg)
+{
+    const size_t reset_timeout = 2000;
+    size_t cnt_reset_timeout = 0;
+
+    while (1)
+    {
+        int pos = 0;
+        int ret = 0;
+        do
+        {
+            ret = bk_uart_read_bytes(0, uart_rx_buf + pos, sizeof(uart_rx_buf), 1);
+            if (ret > 0)
+            {
+                pos += ret;
+            }
+        } while (ret > 0);
+
+        if (pos > 0 || (cnt_reset_timeout >= reset_timeout && rx_irq_fired != 0))
+        {
+            if (cnt_reset_timeout >= reset_timeout && rx_irq_fired != 0)
+            {
+                uart_rx_buf_pos = 0;
+                rx_irq_fired = 0;
+            }
+            else
+            {
+                uart_rx_buf_pos += pos;
+            }
+
+            OCT_text(-1, "rx:%d pos:%d irq:%d", pos, uart_rx_buf_pos, rx_irq_fired);
+            BK_LOGW("", "rx:%d pos:%d irq:%d", pos, uart_rx_buf_pos, rx_irq_fired);
+            cnt_reset_timeout = 0;
+        }
+        rtos_delay_milliseconds(1);
+        cnt_reset_timeout++;
+    }
 }
 
 //When trying to send packet several times but DMA buffer is still full, old code tries to reset port
@@ -103,6 +156,12 @@ void OCT_UART_reset_port(uint32_t line_id){
 void OCT_UART_deinit(void){
 
     OctUartInitialized = false;
+
+    if (uart_task_hnd)
+    {
+        rtos_delete_thread(&uart_task_hnd);
+        uart_task_hnd = NULL;
+    }
 
     dev_uart_drv_deinit(DEV_UART_DRV_ID_0);
     dev_uart_drv_deinit(DEV_UART_DRV_ID_1);
