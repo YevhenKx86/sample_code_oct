@@ -33,10 +33,7 @@
 // static uint32_t crc = 0;
 // static size_t rx_len = 0;
 
-extern volatile int rx_irq_fired;
-
-static uint8_t uart_rx_buf[16384];
-static size_t uart_rx_buf_pos = 0;
+static uint8_t uart_rx_buf[16384] = { 0 };
 static beken_thread_t uart_task_hnd = NULL;
 
 static void uart_rx_task (beken_thread_arg_t arg);
@@ -105,9 +102,6 @@ bool OCT_UART_reinit(){
 
 static void uart_rx_task (beken_thread_arg_t arg)
 {
-    const size_t reset_timeout = 2000;
-    size_t cnt_reset_timeout = 0;
-
     while (1)
     {
         int pos = 0;
@@ -121,24 +115,12 @@ static void uart_rx_task (beken_thread_arg_t arg)
             }
         } while (ret > 0);
 
-        if (pos > 0 || (cnt_reset_timeout >= reset_timeout && rx_irq_fired != 0))
+        if (pos > 0)
         {
-            if (cnt_reset_timeout >= reset_timeout && rx_irq_fired != 0)
-            {
-                uart_rx_buf_pos = 0;
-                rx_irq_fired = 0;
-            }
-            else
-            {
-                uart_rx_buf_pos += pos;
-            }
-
-            OCT_text(-1, "rx:%d pos:%d irq:%d", pos, uart_rx_buf_pos, rx_irq_fired);
-            BK_LOGW("", "rx:%d pos:%d irq:%d", pos, uart_rx_buf_pos, rx_irq_fired);
-            cnt_reset_timeout = 0;
+            OCT_text(-1, "rx:%d pos:%d", ret, pos);
+            bk_uart_write_bytes(0, uart_rx_buf, pos);
         }
         rtos_delay_milliseconds(1);
-        cnt_reset_timeout++;
     }
 }
 
