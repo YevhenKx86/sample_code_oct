@@ -18,6 +18,7 @@
 #define ATTR_RWDATA_IN_TCM
 #define ATTR_ZIDATA_IN_NONCACHED_RAM_4BYTE_ALIGN
 #define ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN __attribute__ ((__section__(".psram.data"),__aligned__(4)))
+#define ATTR_RWDATA_IN_PSRAM __attribute__ ((__section__(".psram.data")))
 #define ATTR_RWDATA_IN_RAM __attribute__((__aligned__(4)))
 
 //#define NET_PKT_SIZE_MIN 32

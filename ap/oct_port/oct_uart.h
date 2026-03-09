@@ -76,6 +76,13 @@ void OCT_UART_reinit_port (hal_uart_port_t port)
 //[NOTE]: Called from main but also on each wake up
 bool OCT_UART_reinit(){
 
+    // [NOTE]: Tmp solution. Mayby need to use psram_malloc for init oct_vars.h variables.
+    OctHwidsNum = 0;
+    for(int i = 0; i < DEBUG_STRINGS; i++){
+        OctText[i][0] = '\0';
+    }
+    //---
+
     //Once per OS lifetime create internal objects and setup buffers
     for (int i = 0; i < NET_LINES_MAX; i++){
 
@@ -154,28 +161,35 @@ void OCT_UART_deinit(void){
 //Put data to DMA buffer of single port. If there is not enough space then packet would be fully discarded
 void OCT_UART_send(uint32_t line_id, const octPacket_t* pkt){
 
-
-    OCT_text(-1, "tx %d", line_id);
+    //OCT_text(-1, "tx %d", line_id);
     //Safety check
-    if (!OctUartInitialized  ||  line_id >= NET_LINES_MAX) return;
+    if (!OctUartInitialized  ||  line_id >= NET_LINES_MAX) { return;}
 
-    //Size of packet
-    uint32_t data_size = PKT_SIZES[pkt->Header.Type];
-    OctUarts[line_id].TxStatBandwidth.Counter += data_size;
+        //Size of packet
+        uint32_t data_size = PKT_SIZES[pkt->Header.Type];
+        OctUarts[line_id].TxStatBandwidth.Counter += data_size;
 
-    //Lock mutex, this function can be called from different tasks
-    //if (xSemaphoreTake(OctUarts[line_id].TxMutex, portMAX_DELAY) == pdTRUE){
+        //Lock mutex, this function can be called from different tasks
+        //if (xSemaphoreTake(OctUarts[line_id].TxMutex, portMAX_DELAY) == pdTRUE){
 
-    bk_err_t err = 
-    dev_uart_drv_write((dev_uart_drv_id_t)line_id, (const uint8_t*)pkt, data_size);
-        OctUarts[line_id].TxStatWritten += data_size;
+            bk_err_t err = 
+            dev_uart_drv_write((dev_uart_drv_id_t)line_id, (const uint8_t*)pkt, data_size);
+            
+            OctUarts[line_id].TxStatWritten += data_size;
 
-        OCT_text(-1, "tx %d, l=%d, err=%d, %ds", line_id, data_size, err, rtos_get_time()/1000);
-
-
-        //Release mutex
-        //xSemaphoreGive(OctUarts[line_id].TxMutex);
+            OCT_text(-1, "tx %d, l=%d, err=%d, %ds", line_id, data_size, err, rtos_get_time()/1000);
+            /*if(data_size > 0){
+                char str[128] = {0};
+                for(int i = 0; i < 9; i++)
+                    sprintf(str + 3*i, "%02X ", ((uint8_t*)pkt)[i]);
+                OCT_text(-1, "%s", str);
+            }*/
     //}
+
+
+            //Release mutex
+            //xSemaphoreGive(OctUarts[line_id].TxMutex);
+        //}
 
         //Lock mutex, this function can be called from different tasks
         /*const uint32_t tx_channel_offset = OCT_LINE_TO_TX_CHANNEL_OFFSET[line_id];

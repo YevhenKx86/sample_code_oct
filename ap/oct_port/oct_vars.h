@@ -20,7 +20,7 @@ TL  int                         OctDownloadState = 0;
 TL  octStat_t                   StatFrametime;
 TL  octStat_t                   StatUartDmaRxData[3];
 
-TL TaskHandle_t                 OctTaskParseTraffic = 0;
+TL  TaskHandle_t                 OctTaskParseTraffic = 0;
 
 TL  int*                        OctMem = 0;                                     //Pool of extended scene objects, shared with app
 TL  int                         OctCap = 0;                                     //How many objects current app decided to use
@@ -28,9 +28,9 @@ TL  int                         OctStride = sizeof(octSprite_t) / 4;            
 TL  octLabel_t                  OctLabels[OCT_LABELS_CAP];                      //Content of label texts
 
 //
-TL  uint32_t                    OctCubeId = CUBEID_UNDEFINED;                   //Persistent cube id from 0 to 7
+TL  uint32_t                    OctCubeId = CUBEID_UNDEFINED;  // in psram -> not started app EVK                 //Persistent cube id from 0 to 7
 TL  uint32_t                    OctDevMode = 0;                                 //Developer mode flags are helping to debug engine from app's side - without recompiling firmware
-TL  char                        OctText[DEBUG_STRINGS][DEBUG_STRING_CAP] = {0};          //Debug strings
+TL ATTR_RWDATA_IN_PSRAM char    OctText[DEBUG_STRINGS][DEBUG_STRING_CAP] = {{0},{0},{0}};          //Debug strings
 
 TL  int                         OctBufferedAs[3][OCT_IMU_CAP];                  //Recent acc measurements [-128 .. +127]
 TL  int                         OctBufferedGs[3][OCT_IMU_CAP];                  //Recent gyro measurements [-128 .. +127]
@@ -67,13 +67,13 @@ TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint32_t                    OctNetDisconnect
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint32_t                    OctNetDisconnectionStartMs = 0;                         //
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN int                         OctDisconnectionPlane = 0;
 
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN octStream_t                 Streams[STREAMS_TOTAL];                                 //Wrappers around arrays with packets
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN octPacket_t                 CmdPackets[CMDS_CAP];                                   //Circular array storing commands from leader
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN octPacket_t                 BlobPackets[BLOBS_CAP];                                 //Circular array storing blob parts from anyone
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN octPacket_t                 MsgPackets[STREAMS_MSGS * MSGS_CAP];                    //Circular arrays storing messages issued by different peers
+TL ATTR_RWDATA_IN_PSRAM octStream_t                 Streams[STREAMS_TOTAL];                                 //Wrappers around arrays with packets
+TL ATTR_RWDATA_IN_PSRAM octPacket_t                 CmdPackets[CMDS_CAP];                                   //Circular array storing commands from leader
+TL ATTR_RWDATA_IN_PSRAM octPacket_t                 BlobPackets[BLOBS_CAP];                                 //Circular array storing blob parts from anyone
+TL ATTR_RWDATA_IN_PSRAM octPacket_t                 MsgPackets[STREAMS_MSGS * MSGS_CAP];                    //Circular arrays storing messages issued by different peers
 
 
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t                     OctUartsCache[NET_LINES_MAX][OCT_UART_BUF_CAP];
+TL ATTR_RWDATA_IN_PSRAM uint8_t                     OctUartsCache[NET_LINES_MAX][OCT_UART_BUF_CAP];
 
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN octJobDownload_t            JobDownload;
 
@@ -82,8 +82,8 @@ ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN bool                           OctManagerRole;
 ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN bool                           OctBtImitation;
 
 //Buffers used for UART DMA, must be allocated in non-cached memory
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t                     OctDmaRxBuffers[NET_LINES_MAX][OCT_UART_DMA_CAP];
-TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t                     OctDmaTxBuffers[NET_LINES_MAX][OCT_UART_DMA_CAP];
+//TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t                     OctDmaRxBuffers[NET_LINES_MAX][OCT_UART_DMA_CAP];
+//TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN uint8_t                     OctDmaTxBuffers[NET_LINES_MAX][OCT_UART_DMA_CAP];
 
 TL ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN volatile octUart_t          OctUarts[NET_LINES_MAX] = {0};
 
