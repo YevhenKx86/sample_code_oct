@@ -48,7 +48,7 @@ void OCT_engine_task(beken_thread_arg_t data){
 
     OCT_set_state(OCT_STATE_MEETING);
 
-    rtos_delay_milliseconds(2000);
+    rtos_delay_milliseconds(1000);
 
     while (1) {
         OCT_run();
@@ -62,7 +62,7 @@ bk_err_t engine_init(void){
                             BEKEN_DEFAULT_WORKER_PRIORITY,
                             "test",
                             (beken_thread_function_t)OCT_engine_task,
-                            16*1024,
+                            8*1024,
                             (beken_thread_arg_t)NULL);
     if (ret)
     {
@@ -77,7 +77,7 @@ bk_err_t engine_init(void){
 //-----------------------------------------------------------------------------
 void OCT_uart_pol_task(beken_thread_arg_t data){   
 
-    rtos_delay_milliseconds(2000);
+    rtos_delay_milliseconds(1000);
 
     OCT_UART_task(data);        
 }
@@ -89,7 +89,7 @@ bk_err_t uart_task_init(void){
                             BEKEN_DEFAULT_WORKER_PRIORITY,
                             "oct_uart_pol_task",
                             (beken_thread_function_t)OCT_uart_pol_task,
-                            16*1024,
+                            8*1024,
                             (beken_thread_arg_t)NULL);
     if (ret)
     {

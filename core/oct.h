@@ -18,9 +18,14 @@
 
 ATTR_RWDATA_IN_PSRAM_4BYTE_ALIGN static uint8_t app_data[APP_BENCH_SIZE];
 
+static bool app_inited = false;
+
 uint8_t * load_app(const uint8_t * app){
 
-    memcpy(app_data, app, APP_BENCH_SIZE);
+    if(app_inited == false){
+        memcpy(app_data, app, APP_BENCH_SIZE);
+        app_inited = true;
+    }
 
     return app_data;
 }
@@ -32,9 +37,11 @@ void OCT_set_embed_pack(const uint8_t* embed)
         OctPackHeader = (octPackHeader_t*)OctPack; 
         OctPackAssets = (octAssetDesc_t*)(OctPack + sizeof(octPackHeader_t));*/ 
 
+        
         OctPack = load_app(embed);
         OctPackHeader = (octPackHeader_t*)OctPack; 
-        OctPackAssets = (octAssetDesc_t*)(OctPack + sizeof(octPackHeader_t)); 
+        OctPackAssets = (octAssetDesc_t*)(OctPack + sizeof(octPackHeader_t));
+
     }
 
 //________________________________________________________________________________________________________________________________________________
@@ -318,12 +325,13 @@ void OCT_run()
 
             //[NOTE]: This is benchmark hack, when we see another module THEN run the game
             if ((OCT_is_state(OCT_STATE_INCOMPLETE) && (OctHwidsNum == 2))  ||  OCT_is_state(OCT_STATE_CONSOLE)) 
-            //if (OCT_is_state(OCT_STATE_INCOMPLETE) ||  OCT_is_state(OCT_STATE_CONSOLE))
+            //if (OCT_is_state(OCT_STATE_INCOMPLETE)  ||  OCT_is_state(OCT_STATE_CONSOLE)) 
             {
                 OCT_set_embed_pack(app_bench_data);
                 EXTERNAL_on_init = on_init_bench;
                 OCT_set_state(OCT_STATE_APP);
                 OCT_on_init();
+                //OCT_text(7,"OCT_STATE_APP");
             }
 
 
