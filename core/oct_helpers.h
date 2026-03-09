@@ -2,6 +2,8 @@
 //--------------------------------------------------------------------------------------------------------
 //Collection of definitions, helper tables, settings and service functions, used through an entire engine
 //--------------------------------------------------------------------------------------------------------
+#include <string.h>
+#include <stdio.h>
 #include "oct_shared.h"
 #include "oct_vars.h"
 #include "oct_utils.h"

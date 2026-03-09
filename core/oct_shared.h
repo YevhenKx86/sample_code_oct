@@ -7,6 +7,8 @@
 #define NULL 0
 #endif
 
+#include <stdint.h>
+
 //Renderer transparency
 #define OCT_TRANSP_MAX 31
 const int OCT_TRANSP_HALF = OCT_TRANSP_MAX/2;

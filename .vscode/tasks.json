@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build bk7258",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "bk7258",
+                "PYTHON=.venv/bin/python"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

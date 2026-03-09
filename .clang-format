@@ -1,0 +1,97 @@
+# Common settings
+BasedOnStyle: Microsoft
+Standard: c++11
+ColumnLimit: 120
+MaxEmptyLinesToKeep: 1
+ReflowComments: true
+
+# Indentation
+UseTab: Never
+IndentWidth: 4
+IndentCaseLabels: true
+IndentExternBlock: NoIndent
+
+# Line breaks
+BinPackParameters: false
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowAllConstructorInitializersOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+
+# Alignment
+AlignArrayOfStructures: Left
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignAfterOpenBracket: Align
+AlignOperands: AlignAfterOperator
+AlignEscapedNewlines: Left
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+
+# Operator breaks
+PenaltyBreakAssignment: 1000
+PenaltyBreakBeforeFirstCallParameter: 100
+BreakBeforeBinaryOperators: false
+BreakBeforeTernaryOperators: true
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterCaseLabel: true
+    AfterClass: true
+    AfterControlStatement: Always
+    AfterEnum: true
+    AfterFunction: true
+    AfterNamespace: true
+    AfterStruct: true
+    AfterUnion: true
+    AfterExternBlock: false
+    BeforeCatch: true
+    BeforeElse: true
+    IndentBraces: false
+    SplitEmptyFunction: true
+    SplitEmptyRecord: true
+    SplitEmptyNamespace: true
+
+Cpp11BracedListStyle: false
+
+# Includes
+IncludeBlocks: Merge
+IncludeCategories:
+    # Headers in <> without extension.
+    - Regex:             '<([A-Za-z0-9\Q/-_\E])+>'
+    - Priority:          1
+    # Headers in "" with extension.
+    - Regex:             '"([A-Za-z0-9.\Q/-_\E])+"'
+    - Priority:          2
+
+# Sorting
+SortIncludes: true
+SortUsingDeclarations: true
+
+# Spaces
+PointerAlignment: Middle
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+SpacesInContainerLiterals: true
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+    AfterControlStatements: true
+    AfterForeachMacros: false
+    AfterFunctionDeclarationName: true
+    AfterFunctionDefinitionName: true
+    AfterIfMacros: true
+    AfterOverloadedOperator: true
+    AfterRequiresInClause: true
+    AfterRequiresInExpression: true
+    BeforeNonEmptyParentheses: false
+SpacesBeforeTrailingComments: 1

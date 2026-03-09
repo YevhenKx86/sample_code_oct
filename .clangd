@@ -1,0 +1,36 @@
+# https://clangd.llvm.org/config
+
+CompileFlags:
+  Add:
+    - -U__llvm__
+    - -D_CLANGD=1
+    - -D__syscall=
+    - -D__GNUC__=13
+    - -D__GNUC_MINOR__=2
+    - -D__GNUC_PATCH__=1
+    - -D__ARM_ARCH_PROFILE='M'
+    - -DOCT_APP_MODULE
+    - -I/usr/lib/gcc/arm-none-eabi/13.2.1/include
+    - -I/home/timur/work/sample_code_oct/build/bk7258/sample_code_oct/bk7258/armino_as_lib/include
+    - -I/home/timur/work/sample_code_oct/build/bk7258/sample_code_oct/bk7258/armino_as_lib/bk7258/config
+    - -I/home/timur/work/bk7258_sdk/ap/include/driver/hal
+    - -I/home/timur/work/sample_code_oct/build/bk7258/sample_code_oct/bk7258_ap/armino_as_lib/include
+    - -Wno-unknown-attributes
+  Compiler:
+    /usr/bin/arm-none-eabi-gcc
+  CompilationDatabase: /home/timur/work/sample_code_oct/build/bk7258/sample_code_oct/bk7258/compile_commands.json
+Diagnostics:
+  Suppress:
+    - drv_unknown_argument
+    - builtin_redeclare # __built_in_va_start
+    - main_returns_nonint # main # When -std=XXX is specified.
+    - -Wmain-return-type # main # When -std=XXX isn't specified.
+
+# Cannot suppress driver diagnostics #1142
+# https://github.com/clangd/clangd/issues/1142
+
+# Clang command line argument reference
+# https://clang.llvm.org/docs/ClangCommandLineReference.html
+
+# Clang Compiler User's Manual
+# https://clang.llvm.org/docs/UsersManual.html

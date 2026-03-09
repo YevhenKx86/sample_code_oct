@@ -1,0 +1,12 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.path": "/usr/bin/clangd",
+  "clangd.arguments": [
+    "--compile-commands-dir=/home/timur/work/sample_code_oct/build/bk7258/sample_code_oct/bk7258_ap",
+    "--query-driver=/usr/bin/arm-none-eabi-gcc,/usr/bin/arm-none-eabi-g++",
+    "--background-index",
+    "--completion-style=detailed",
+    "--header-insertion=iwyu",
+    "--log=error"
+  ]
+}

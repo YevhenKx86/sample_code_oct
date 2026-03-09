@@ -3,26 +3,19 @@
     "configurations": [
         {
             "cwd": "${workspaceFolder}",
-            "executable": "${workspaceFolder}/build/bk7258/sample_code/bk7258_ap/app.elf",
-            "serverpath": "/opt/SEGGER/JLink_V910/JLinkGDBServer",
-            "serverArgs": [
-                "-select",
-                "USB",
-                "-endian",
-                "little",
-                "-speed",
-                "4000",
-                "-noir",
-                "-noLocalhostOnly"
-            ],
-            "name": "Debug with JLink",
-            "request": "launch",
+            "executable": "${workspaceFolder}/build/bk7258/sample_code_oct/bk7258_ap/app.elf",
+            "gdbPath": "gdb-multiarch",
+            "name": "Debug",
+            "request": "attach",
             "type": "cortex-debug",
-            "device": "Cortex-M33",
+            "device": "STAR-MC1",
             "interface": "swd",
             "showDevDebugOutput": "raw",
-            "servertype": "jlink",
-            "runToEntryPoint": "main"
+            "servertype": "external",
+            "gdbTarget": "127.0.0.1:2331",
+            "runToEntryPoint": "main",
+            "targetProcessor": 0,
+            "numberOfProcessors": 2
         }
     ]
 }

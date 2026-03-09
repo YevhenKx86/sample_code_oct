@@ -1,4 +1,5 @@
 #pragma once
+#include <stdio.h>
 #include "oct_vars.h"
 #include "oct_render.h"
 
@@ -14,13 +15,13 @@ void OCT_print_debug_stats(uint16_t* framebuf, uint32_t vid)
     {
         //FPS
         char dbgstr[100] = {};
-        sprintf(dbgstr, "%3ld %3ld %3ld", StatFrametime.MinSaved, StatFrametime.AvgSaved, StatFrametime.MaxSaved);
+        snprintf(dbgstr, sizeof(dbgstr), "%3ld %3ld %3ld", StatFrametime.MinSaved, StatFrametime.AvgSaved, StatFrametime.MaxSaved);
         OCT_RENDER_text(framebuf, dbgstr, 140, 229, COLOR_LIGHT_GREEN);
 
         //UARTs
         for (int i = 0; i < NET_LINES_MAX; i++)
         {
-            sprintf(dbgstr, "RX%5lu %2lu %3lu TX%5lu %3lu",  
+            snprintf(dbgstr, sizeof(dbgstr), "RX%5lu %2lu %3lu TX%5lu %3lu",  
                 OctUarts[i].RxStatBandwidth.CounterSaved, 
                 OctUarts[i].RxStatPackets.CounterSaved, 
                 OctUarts[i].RxStatSkipped%1000,   

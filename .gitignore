@@ -1,1 +1,6 @@
 build
+__pycache__
+*.o
+*.obj
+*.old
+.venv

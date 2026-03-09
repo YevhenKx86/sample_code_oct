@@ -1,6 +1,10 @@
 #pragma once
 ///#include "aDefines.h"
 
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
 #define SD_BLOCK_LENGTH   (512)
 
 #define DISPLAY_WIDTH 240

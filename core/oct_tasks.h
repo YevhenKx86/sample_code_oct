@@ -9,7 +9,7 @@
 #endif
 
 #include "oct_vars.h"
-#include "oct_uart.h"
+#include "oct_net.h"
 
 
 
