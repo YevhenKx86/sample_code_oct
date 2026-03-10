@@ -26,15 +26,18 @@
 //extern TL VDMA_REGISTER_PORT_T*    vdma_port[];
 
 #define OCT_UART_BAUDRATE 4333333
-#define MAX_DISP_DATA 16
+#define MAX_DISP_DATA 5
 #define TEST_PAYLOAD_LEN 64UL
 #define TEST_PAYLOAD_CRC 0xBC103D92
 
 // static uint32_t crc = 0;
 // static size_t rx_len = 0;
 
-static uint8_t uart_rx_buf[16384] = { 0 };
+static uint8_t uart_rx_buf[4096] = { 0 };
 static beken_thread_t uart_task_hnd = NULL;
+static volatile size_t read_pos = 0;
+static volatile size_t write_pos = 0;
+static volatile size_t len_to_write = 0;
 
 static void uart_rx_task (beken_thread_arg_t arg);
 
@@ -42,6 +45,22 @@ static void uart_rx_task (beken_thread_arg_t arg);
 //[NOTE]: Called from task
 void rx_done_callback (uart_id_t id, void *param)
 {
+}
+
+//[NOTE]: Called from task
+void tx_done_callback (uart_id_t id, void * param)
+{
+    if (id == UART_ID_0)
+    {
+        OCT_MEM_BARRIER;
+        write_pos += len_to_write;
+        len_to_write = 0;
+        if (read_pos == write_pos)
+        {
+            read_pos  = 0;
+            write_pos = 0;
+        }
+    }
 }
 
 /*void OCT_UART_dma_callback(hal_uart_callback_event_t event, void *user_data){
@@ -69,7 +88,7 @@ void OCT_UART_reinit_port (hal_uart_port_t port)
 
     BK_LOG_ON_ERR(bk_uart_init((uart_id_t)port, &cfg));
     // BK_LOG_ON_ERR(bk_uart_register_rx_isr((uart_id_t)port, rx_done_callback, NULL));
-    bk_uart_register_dma_rx_isr((uart_id_t)port, rx_done_callback, NULL);
+    bk_uart_register_dma_tx_isr((uart_id_t)port, tx_done_callback, NULL);
     BK_LOG_ON_ERR(bk_uart_enable_rx_interrupt((uart_id_t)port));
 }
 
@@ -100,7 +119,9 @@ bool OCT_UART_reinit(){
     OCT_UART_reinit_port(HAL_UART_1);
     OCT_UART_reinit_port(HAL_UART_2);
 
-    rtos_create_thread(&uart_task_hnd, BEKEN_DEFAULT_WORKER_PRIORITY, "uart_rx", uart_rx_task, 8192, NULL);
+    os_memset(uart_rx_buf, 0, sizeof(uart_rx_buf));
+
+    rtos_create_thread(&uart_task_hnd, BEKEN_DEFAULT_WORKER_PRIORITY, "uart_rx", uart_rx_task, 4096, NULL);
 
     OctUartInitialized = true;
 
@@ -111,21 +132,31 @@ static void uart_rx_task (beken_thread_arg_t arg)
 {
     while (1)
     {
-        int pos = 0;
         int ret = 0;
         do
         {
-            ret = bk_uart_read_bytes(0, uart_rx_buf + pos, sizeof(uart_rx_buf), 1);
+            ret = bk_uart_read_bytes(0, uart_rx_buf + read_pos, sizeof(uart_rx_buf) - read_pos, 0);
             if (ret > 0)
             {
-                pos += ret;
+                read_pos += ret;
+            }
+
+            if (read_pos >= sizeof(uart_rx_buf))
+            {
+                OCT_text(-1, "UART Rx buf overflow!");
+                break;
             }
         } while (ret > 0);
 
-        if (pos > 0)
+        if (read_pos > 0 && len_to_write == 0)
         {
-            OCT_text(-1, "rx:%d pos:%d", ret, pos);
-            bk_uart_write_bytes(0, uart_rx_buf, pos);
+            size_t show_len = MIN(read_pos, MAX_DISP_DATA);
+            uint8_t temp = uart_rx_buf[show_len];
+            uart_rx_buf[show_len] = 0;
+            OCT_text(-1, "r:%d %s-%s", read_pos, uart_rx_buf, &uart_rx_buf[read_pos - show_len]);
+            uart_rx_buf[show_len] = temp;
+            len_to_write = read_pos - write_pos;
+            bk_uart_write_bytes(0, uart_rx_buf + write_pos, len_to_write);
         }
         rtos_delay_milliseconds(1);
     }
